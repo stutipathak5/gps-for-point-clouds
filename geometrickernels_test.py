@@ -8,19 +8,32 @@ from geometric_kernels.frontends.pytorch.gpytorch import GPytorchGeometricKernel
 from geometric_kernels.spaces.mesh import Mesh
 from geometric_kernels.kernels import MaternKarhunenLoeveKernel
 
+from gpytorch.models import ApproximateGP
+from gpytorch.variational import CholeskyVariationalDistribution
+from gpytorch.variational import VariationalStrategy
+
 num_eigenpairs = 500
 output_dir = "output"
 num_samples = 8
 seed = None
 
 
-class ExactGPModel(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, likelihood, kernel):
-        super(ExactGPModel, self).__init__(train_x, train_y, likelihood)
-        self.mean_module = gpytorch.means.ZeroMean()
+class SVGP(ApproximateGP):
+    def __init__(self, inducing_points, kernel):
+        variational_distribution = CholeskyVariationalDistribution(
+            inducing_points.size(0)
+        )
+        variational_strategy = VariationalStrategy(
+            self,
+            inducing_points,
+            variational_distribution,
+            learn_inducing_locations=True,
+        )
+        super(SVGP, self).__init__(variational_strategy)
+        self.mean_module = gpytorch.means.ConstantMean()
         self.covar_module = kernel
 
-    def forward(self, x):  # pylint: disable=arguments-differ
+    def forward(self, x):
         mean_x = self.mean_module(x)
         covar_x = self.covar_module(x)
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
@@ -59,11 +72,14 @@ def plot_mesh(mesh: Mesh, vertices_colors=None):
 
 
 def get_data():
-    _X = torch.tensor(np.loadtxt('resources/curvatures/bun_zipper_res3_node_tags.csv')).int()
-    _y = torch.tensor(np.loadtxt('resources/curvatures/bun_zipper_res3.csv'))
+    _X = torch.tensor(
+        np.loadtxt("resources/curvatures/bun_zipper_res3_node_tags.csv")
+    ).int()
+    _y = torch.tensor(np.loadtxt("resources/curvatures/bun_zipper_res3.csv"))
     # scale y to be in range [0, 1]
     _y = (_y - torch.min(_y)) / (torch.max(_y) - torch.min(_y))
     return _X, _y
+
 
 mesh = Mesh.load_mesh("resources/meshes/bun_zipper_res3.ply")
 print("Number of vertices in the mesh:", mesh.num_vertices)
@@ -71,28 +87,56 @@ plot = plot_mesh(mesh)
 fig = go.Figure(plot)
 update_figure(fig)
 
-# Build model
+
+# Construct model
 nu = 1 / 2.0
 truncation_level = 20
 base_kernel = MaternKarhunenLoeveKernel(mesh, truncation_level)
 geometric_kernel = GPytorchGeometricKernel(base_kernel)
 geometric_kernel.double()
 
-gaussian = gpytorch.likelihoods.GaussianLikelihood(
+likelihood = gpytorch.likelihoods.GaussianLikelihood(
     noise_constraint=gpytorch.constraints.GreaterThan(1e-6)
 )
-gaussian.noise = torch.tensor(1e-5)
+likelihood.noise = torch.tensor(1e-5)
 
 X, y = get_data()
 num_data = X.shape[0]
 print("Number of vertices in training data:", num_data)
-model = ExactGPModel(X, y, gaussian, geometric_kernel)
+init_inducing_locations = torch.randint(
+    torch.min(X).item(), torch.max(X).item(), (100,)
+).double()
+model = SVGP(init_inducing_locations, geometric_kernel)
 model.double()
-gaussian.double()
-model.eval()
+likelihood.double()
+
+# Train model
+model.train()
+likelihood.train()
+
+optimizer = torch.optim.Adam(
+    [
+        {"params": model.parameters()},
+        {"params": likelihood.parameters()},
+    ],
+    lr=0.01,
+)
+
+# Our loss object. We're using the VariationalELBO
+mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=y.size(0))
+
+n_iter = 100
+for i in range(n_iter):
+    optimizer.zero_grad()
+    output = model(X)
+    loss = -mll(output, y)
+    loss.backward()
+    optimizer.step()
 
 # Evaluate model
-X_test = torch.arange(mesh.num_vertices).int()
+model.eval()
+likelihood.eval()
+X_test = X  # torch.arange(mesh.num_vertices).int()
 f_preds = model(X_test)
 m, v = f_preds.mean, f_preds.variance
 m, v = m.detach().numpy(), v.detach().numpy()

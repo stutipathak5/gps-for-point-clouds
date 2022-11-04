@@ -1,1 +1,1 @@
-# Riemannian GPs for Point Cloud Simplication
+# Riemannian GPs for Point Cloud Simplification
