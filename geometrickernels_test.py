@@ -30,7 +30,7 @@ class SVGP(ApproximateGP):
             learn_inducing_locations=True,
         )
         super(SVGP, self).__init__(variational_strategy)
-        self.mean_module = gpytorch.means.ConstantMean()
+        self.mean_module = gpytorch.means.ZeroMean()
         self.covar_module = kernel
 
     def forward(self, x):
@@ -72,12 +72,20 @@ def plot_mesh(mesh: Mesh, vertices_colors=None):
 
 
 def get_data():
-    _X = torch.tensor(
-        np.loadtxt("resources/curvatures/bun_zipper_res3_node_tags.csv")
-    ).int()
-    _y = torch.tensor(np.loadtxt("resources/curvatures/bun_zipper_res3.csv"))
-    # scale y to be in range [0, 1]
-    _y = (_y - torch.min(_y)) / (torch.max(_y) - torch.min(_y))
+    # _X = torch.tensor(
+    #     np.loadtxt("resources/curvatures/bun_zipper_res3_node_tags.csv")
+    # ).int()
+    # _y = torch.tensor(np.loadtxt("resources/curvatures/bun_zipper_res3.csv"))
+    # # scale y to be in range [0, 1]
+    # _y = (_y - torch.min(_y)) / (torch.max(_y) - torch.min(_y))
+
+    # TODO - need to fix problem with above; there's 1887 curvature ground truth values but
+    # 1889 vertices in the mesh; this is causing the kernel to fall over. Testing things out
+    # with the toy data below for now:
+
+    _X = torch.arange(1889)
+    _y = torch.linspace(0, 1, 1889)
+
     return _X, _y
 
 
@@ -86,7 +94,6 @@ print("Number of vertices in the mesh:", mesh.num_vertices)
 plot = plot_mesh(mesh)
 fig = go.Figure(plot)
 update_figure(fig)
-
 
 # Construct model
 nu = 1 / 2.0
