@@ -1,22 +1,21 @@
-import gmsh
-import pandas as pd
-import numpy as np
+"curvature computation and saving using pyntcloud"
+
 from pyntcloud import PyntCloud
 import matplotlib.pyplot as plt
 
-gmsh.initialize()
-gmsh.open('resources/meshes/bun_zipper_res3.ply')
+def curvature(no_neighbors, path):
+    cloud = PyntCloud.from_file(path)
+    k_neighbors = cloud.get_neighbors(k=no_neighbors)
+    ev = cloud.add_scalar_field("eigen_values", k_neighbors=k_neighbors)
+    cloud.add_scalar_field("curvature", ev=ev)
+    cloud.points=cloud.points[["x", "y", "z", "curvature("+str(no_neighbors+1)+")"]]
+    return cloud.points
 
-points=np.reshape(gmsh.model.mesh.getNodes()[1],(-1,3))
-cloud = PyntCloud(pd.DataFrame(points, columns=['x', 'y', 'z']))
-k_neighbors = cloud.get_neighbors(k=10)
-ev = cloud.add_scalar_field("eigen_values", k_neighbors=k_neighbors)
-cloud.add_scalar_field("curvature", ev=ev)
-ground_truth=cloud.points["curvature(11)"].to_numpy()
-X=cloud.points[["x", "y", "z"]].to_numpy()
-
+# example with plot
+df=curvature(60, 'resources/clouds/bun_zipper.ply')
+df.to_csv('resources/curvature_pc/bun_zipper.csv', index=False)
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 ax.set_axis_off()
-ax.scatter(X[:,0], X[:,1], X[:,2], c=ground_truth, s=1)
+ax.scatter(df.iloc[:, 0], df.iloc[:, 1], df.iloc[:, 2], c=df.iloc[:, 3], s=1)
 plt.show()
