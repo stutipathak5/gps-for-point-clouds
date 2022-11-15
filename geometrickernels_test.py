@@ -72,19 +72,24 @@ def plot_mesh(mesh: Mesh, vertices_colors=None):
 
 
 def get_data():
+    # TODO - decide whether using int vertices or xyz locations
     # _X = torch.tensor(
     #     np.loadtxt("resources/curvatures/bun_zipper_res3_node_tags.csv")
     # ).int()
-    # _y = torch.tensor(np.loadtxt("resources/curvatures/bun_zipper_res3.csv"))
-    # # scale y to be in range [0, 1]
-    # _y = (_y - torch.min(_y)) / (torch.max(_y) - torch.min(_y))
+    _X = torch.tensor(
+        np.loadtxt("resources/curvatures/bun_zipper_res3_coords.csv")
+    ).double()
+
+    _y = torch.tensor(np.loadtxt("resources/curvatures/bun_zipper_res3.csv"))
+    # scale y to be in range [0, 1]
+    _y = (_y - torch.min(_y)) / (torch.max(_y) - torch.min(_y))
 
     # TODO - need to fix problem with above; there's 1887 curvature ground truth values but
     # 1889 vertices in the mesh; this is causing the kernel to fall over. Testing things out
-    # with the toy data below for now:
+    # with the right dims for now by adding elements to end (note, this is not correct!)
 
-    _X = torch.arange(1889)
-    _y = torch.linspace(0, 1, 1889)
+    _X = torch.cat([_X, torch.ones(2, 3)])
+    _y = torch.cat([_y, torch.ones(2)])
 
     return _X, _y
 
@@ -109,10 +114,16 @@ likelihood.noise = torch.tensor(1e-5)
 
 X, y = get_data()
 num_data = X.shape[0]
+num_inducing_points = 100
 print("Number of vertices in training data:", num_data)
-init_inducing_locations = torch.randint(
-    torch.min(X).item(), torch.max(X).item(), (100,)
-).double()
+
+# TODO - decide whether using int vertices or xyz locations
+# init_inducing_locations = torch.randint(
+#     torch.min(X).item(), torch.max(X).item(), (num_inducing_points,)
+# ).double()
+init_inducing_locations = X[torch.randperm(num_data)[:num_inducing_points], :]
+
+print("Inducing inputs shape:", init_inducing_locations.shape)
 model = SVGP(init_inducing_locations, geometric_kernel)
 model.double()
 likelihood.double()

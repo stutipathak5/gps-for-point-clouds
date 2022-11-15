@@ -34,3 +34,4 @@ plt.show()
 # Save node tags ground truth curvatures for bun_zipper_res3.ply
 np.savetxt("resources/curvatures/bun_zipper_res3_node_tags.csv", node_tags)
 np.savetxt("resources/curvatures/bun_zipper_res3.csv", ground_truth)
+np.savetxt("resources/curvatures/bun_zipper_res3_coords.csv", points)
