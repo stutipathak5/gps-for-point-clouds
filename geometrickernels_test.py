@@ -72,29 +72,23 @@ def plot_mesh(mesh: Mesh, vertices_colors=None):
 
 
 def get_data():
+    data = np.loadtxt(
+        "resources/curvature_pc/bun_zipper_res3.csv", skiprows=1, delimiter=","
+    )
     # TODO - decide whether using int vertices or xyz locations
     # _X = torch.tensor(
-    #     np.loadtxt("resources/curvatures/bun_zipper_res3_node_tags.csv")
-    # ).int()
-    _X = torch.tensor(
-        np.loadtxt("resources/curvatures/bun_zipper_res3_coords.csv")
-    ).double()
+    #     np.loadtxt("resources/curvatures/bun_zipper_res3.csv")[:, :3]
+    # ).double()
+    _X = torch.arange(data.shape[0])[:, None].int()
 
-    _y = torch.tensor(np.loadtxt("resources/curvatures/bun_zipper_res3.csv"))
+    _y = torch.tensor(data[:, 3])[:, None].double()
     # scale y to be in range [0, 1]
     _y = (_y - torch.min(_y)) / (torch.max(_y) - torch.min(_y))
-
-    # TODO - need to fix problem with above; there's 1887 curvature ground truth values but
-    # 1889 vertices in the mesh; this is causing the kernel to fall over. Testing things out
-    # with the right dims for now by adding elements to end (note, this is not correct!)
-
-    _X = torch.cat([_X, torch.ones(2, 3)])
-    _y = torch.cat([_y, torch.ones(2)])
 
     return _X, _y
 
 
-mesh = Mesh.load_mesh("resources/meshes/bun_zipper_res3.ply")
+mesh = Mesh.load_mesh("resources/clouds/bun_zipper_res3.ply")
 print("Number of vertices in the mesh:", mesh.num_vertices)
 plot = plot_mesh(mesh)
 fig = go.Figure(plot)
@@ -118,10 +112,10 @@ num_inducing_points = 100
 print("Number of vertices in training data:", num_data)
 
 # TODO - decide whether using int vertices or xyz locations
-# init_inducing_locations = torch.randint(
-#     torch.min(X).item(), torch.max(X).item(), (num_inducing_points,)
-# ).double()
-init_inducing_locations = X[torch.randperm(num_data)[:num_inducing_points], :]
+init_inducing_locations = torch.randint(
+    torch.min(X).item(), torch.max(X).item(), (num_inducing_points,)
+)[:, None].double()
+# init_inducing_locations = X[torch.randperm(num_data)[:num_inducing_points], :]
 
 print("Inducing inputs shape:", init_inducing_locations.shape)
 model = SVGP(init_inducing_locations, geometric_kernel)
@@ -158,7 +152,9 @@ X_test = X  # torch.arange(mesh.num_vertices).int()
 f_preds = model(X_test)
 m, v = f_preds.mean, f_preds.variance
 m, v = m.detach().numpy(), v.detach().numpy()
-sample = f_preds.sample(sample_shape=torch.Size([1])).detach().numpy()
+sample = (
+    f_preds.sample(sample_shape=torch.Size([1])).detach().numpy()
+)  # TODO - maybe change to [1, 1] to align with y being (n_data, 1)?
 
 X_numpy = X.numpy().astype(np.int32)
 
