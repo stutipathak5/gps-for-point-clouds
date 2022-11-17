@@ -42,6 +42,11 @@ class PointCloud(DiscreteSpectrumSpace):
         if num not in self.cache:
             L, M = robust_laplacian.point_cloud_laplacian(self.vertices.numpy())
             evals, evecs = sla.eigsh(L, num, M, sigma=1e-8)
+
+            # First eigenvalue can be very small (<1e-5), whereas typical values are 1e2-1e3.
+            # Sidestep this issue (which causes NaNs) by setting such values to zero.
+            evals[evals < 0] = 0.0
+
             evecs, _ = np.linalg.qr(evecs)
             self.cache[num] = (evecs, evals.reshape(-1, 1))
 

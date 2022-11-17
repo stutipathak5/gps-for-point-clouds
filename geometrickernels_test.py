@@ -13,7 +13,7 @@ from spaces import PointCloud
 
 
 num_eigenpairs = 500
-num_inducing_points = 200
+num_inducing_points = 5  # 200
 output_dir = "output"
 num_samples = 8
 seed = None
@@ -51,7 +51,7 @@ def get_data():
     ).double()
     _X_idx = torch.arange(data.shape[0])
     _X = {"idx": _X_idx, "coords": _X_coords}
-    _y = torch.tensor(data[:, 3])[:, None].double()
+    _y = torch.tensor(data[:, 3]).double()
     return _X, _y
 
 
@@ -63,8 +63,7 @@ init_inducing_locations = torch.randint(
 ).double()
 print("Inducing inputs shape:", init_inducing_locations.shape)
 
-# NOTE - Uncomment to plot full initial point cloud and inducing locations
-
+# NOTE - Uncomment below to plot full initial point cloud and inducing locations
 # fig = px.scatter_3d(
 #     x=X["coords"][:, 0],
 #     y=X["coords"][:, 1],
@@ -79,17 +78,20 @@ print("Inducing inputs shape:", init_inducing_locations.shape)
 # )
 # fig.show()
 
-
 # Initialise space for kernel
 point_cloud = PointCloud(X["coords"])
 print("Number of points in the cloud:", point_cloud.num_vertices)
 
-# Construct base kernel
+# Construct our geometric kernel
 nu = 1 / 2.0
 truncation_level = 20
 base_kernel = MaternKarhunenLoeveKernel(point_cloud, truncation_level)
 geometric_kernel = GPytorchGeometricKernel(base_kernel)
 geometric_kernel.double()
+
+#####
+print(geometric_kernel.forward(X["idx"], X["idx"]))
+#####
 
 # Build model and likelihood
 likelihood = gpytorch.likelihoods.GaussianLikelihood(
@@ -100,8 +102,6 @@ likelihood.noise = torch.tensor(1e-5)
 model = SVGP(init_inducing_locations, geometric_kernel)
 model.double()
 likelihood.double()
-
-# Train model
 model.train()
 likelihood.train()
 
@@ -116,29 +116,21 @@ optimizer = torch.optim.Adam(
 # Our loss object. We're using the VariationalELBO
 mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=y.size(0))
 
-n_iter = 100
+# Train the SVGP
+n_iter = 1000
 for i in range(n_iter):
     optimizer.zero_grad()
     output = model(X["idx"])
     loss = -mll(output, y)
     loss.backward()
     optimizer.step()
+    print(model.variational_strategy.inducing_points.round().long()[1])
     print("Iteration %d complete" % (i + 1))
 
-# Evaluate model (not needed right now)
-# model.eval()
-# likelihood.eval()
-# X_test = X
-# f_preds = model(X_test)
-# m, v = f_preds.mean, f_preds.variance
-# m, v = m.detach().numpy(), v.detach().numpy()
-# sample = f_preds.sample(sample_shape=torch.Size([1])).detach().numpy()
-# X_numpy = X.numpy().astype(np.int32)
-
 # Plot optimised inducing point locations
-fig = px.scatter_3d(
-    x=X["coords"][model.variational_strategy.inducing_points.round().long(), 0],
-    y=X["coords"][model.variational_strategy.inducing_points.round().long(), 1],
-    z=X["coords"][model.variational_strategy.inducing_points.round().long(), 2],
-)
-fig.show()
+# fig = px.scatter_3d(
+#     x=X["coords"][model.variational_strategy.inducing_points.round().long()[:, 0], 0],
+#     y=X["coords"][model.variational_strategy.inducing_points.round().long()[:, 0], 1],
+#     z=X["coords"][model.variational_strategy.inducing_points.round().long()[:, 0], 2],
+# )
+# fig.show()
