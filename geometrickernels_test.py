@@ -1,18 +1,19 @@
-import os
 import gpytorch
+import numpy as np
 import torch
 import geometric_kernels.torch
-import numpy as np
-import plotly.graph_objects as go
 from geometric_kernels.frontends.pytorch.gpytorch import GPytorchGeometricKernel
-from geometric_kernels.spaces.mesh import Mesh
 from geometric_kernels.kernels import MaternKarhunenLoeveKernel
-
 from gpytorch.models import ApproximateGP
 from gpytorch.variational import CholeskyVariationalDistribution
 from gpytorch.variational import VariationalStrategy
+import plotly.express as px
+
+from spaces import PointCloud
+
 
 num_eigenpairs = 500
+num_inducing_points = 200
 output_dir = "output"
 num_samples = 8
 seed = None
@@ -39,85 +40,63 @@ class SVGP(ApproximateGP):
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 
-def update_figure(fig):
-    """Utility to clean up figure"""
-    fig.update_layout(scene_aspectmode="cube")
-    fig.update_scenes(xaxis_visible=False, yaxis_visible=False, zaxis_visible=False)
-    # fig.update_traces(showscale=False, hoverinfo="none")
-    fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
-
-    fig.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
-    fig.update_layout(
-        scene=dict(
-            xaxis=dict(showbackground=False, showticklabels=False, visible=False),
-            yaxis=dict(showbackground=False, showticklabels=False, visible=False),
-            zaxis=dict(showbackground=False, showticklabels=False, visible=False),
-        )
-    )
-    return fig
-
-
-def plot_mesh(mesh: Mesh, vertices_colors=None):
-    plot = go.Mesh3d(
-        x=mesh.vertices[:, 0],
-        y=mesh.vertices[:, 1],
-        z=mesh.vertices[:, 2],
-        i=mesh.faces[:, 0],
-        j=mesh.faces[:, 1],
-        k=mesh.faces[:, 2],
-        colorscale="Viridis",
-        intensity=vertices_colors,
-    )
-    return plot
-
-
 def get_data():
     data = np.loadtxt(
         "resources/curvature_pc/bun_zipper_res3.csv", skiprows=1, delimiter=","
     )
-    # TODO - decide whether using int vertices or xyz locations
-    # _X = torch.tensor(
-    #     np.loadtxt("resources/curvatures/bun_zipper_res3.csv")[:, :3]
-    # ).double()
-    _X = torch.arange(data.shape[0])[:, None].int()
-
+    _X_coords = torch.tensor(
+        np.loadtxt(
+            "resources/curvature_pc/bun_zipper_res3.csv", delimiter=",", skiprows=1
+        )[:, :3]
+    ).double()
+    _X_idx = torch.arange(data.shape[0])
+    _X = {"idx": _X_idx, "coords": _X_coords}
     _y = torch.tensor(data[:, 3])[:, None].double()
-    # scale y to be in range [0, 1]
-    _y = (_y - torch.min(_y)) / (torch.max(_y) - torch.min(_y))
-
     return _X, _y
 
 
-mesh = Mesh.load_mesh("resources/clouds/bun_zipper_res3.ply")
-print("Number of vertices in the mesh:", mesh.num_vertices)
-plot = plot_mesh(mesh)
-fig = go.Figure(plot)
-update_figure(fig)
+# Get data, set and plot initial locations of inducing points
+X, y = get_data()
+num_data = X["coords"].shape[0]
+init_inducing_locations = torch.randint(
+    0, X["coords"].shape[0], (num_inducing_points,)
+).double()
+print("Inducing inputs shape:", init_inducing_locations.shape)
 
-# Construct model
+# NOTE - Uncomment to plot full initial point cloud and inducing locations
+
+# fig = px.scatter_3d(
+#     x=X["coords"][:, 0],
+#     y=X["coords"][:, 1],
+#     z=X["coords"][:, 2],
+# )
+# fig.show()
+
+# fig = px.scatter_3d(
+#     x=X["coords"][init_inducing_locations.long(), 0],
+#     y=X["coords"][init_inducing_locations.long(), 1],
+#     z=X["coords"][init_inducing_locations.long(), 2],
+# )
+# fig.show()
+
+
+# Initialise space for kernel
+point_cloud = PointCloud(X["coords"])
+print("Number of points in the cloud:", point_cloud.num_vertices)
+
+# Construct base kernel
 nu = 1 / 2.0
 truncation_level = 20
-base_kernel = MaternKarhunenLoeveKernel(mesh, truncation_level)
+base_kernel = MaternKarhunenLoeveKernel(point_cloud, truncation_level)
 geometric_kernel = GPytorchGeometricKernel(base_kernel)
 geometric_kernel.double()
 
+# Build model and likelihood
 likelihood = gpytorch.likelihoods.GaussianLikelihood(
     noise_constraint=gpytorch.constraints.GreaterThan(1e-6)
 )
 likelihood.noise = torch.tensor(1e-5)
 
-X, y = get_data()
-num_data = X.shape[0]
-num_inducing_points = 100
-print("Number of vertices in training data:", num_data)
-
-# TODO - decide whether using int vertices or xyz locations
-init_inducing_locations = torch.randint(
-    torch.min(X).item(), torch.max(X).item(), (num_inducing_points,)
-)[:, None].double()
-# init_inducing_locations = X[torch.randperm(num_data)[:num_inducing_points], :]
-
-print("Inducing inputs shape:", init_inducing_locations.shape)
 model = SVGP(init_inducing_locations, geometric_kernel)
 model.double()
 likelihood.double()
@@ -140,40 +119,26 @@ mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=y.size(0))
 n_iter = 100
 for i in range(n_iter):
     optimizer.zero_grad()
-    output = model(X)
+    output = model(X["idx"])
     loss = -mll(output, y)
     loss.backward()
     optimizer.step()
+    print("Iteration %d complete" % (i + 1))
 
-# Evaluate model
-model.eval()
-likelihood.eval()
-X_test = X  # torch.arange(mesh.num_vertices).int()
-f_preds = model(X_test)
-m, v = f_preds.mean, f_preds.variance
-m, v = m.detach().numpy(), v.detach().numpy()
-sample = (
-    f_preds.sample(sample_shape=torch.Size([1])).detach().numpy()
-)  # TODO - maybe change to [1, 1] to align with y being (n_data, 1)?
+# Evaluate model (not needed right now)
+# model.eval()
+# likelihood.eval()
+# X_test = X
+# f_preds = model(X_test)
+# m, v = f_preds.mean, f_preds.variance
+# m, v = m.detach().numpy(), v.detach().numpy()
+# sample = f_preds.sample(sample_shape=torch.Size([1])).detach().numpy()
+# X_numpy = X.numpy().astype(np.int32)
 
-X_numpy = X.numpy().astype(np.int32)
-
-# Plot predictions and samples
-prediction_plot = plot_mesh(mesh, vertices_colors=m)
-data_plot = go.Scatter3d(
-    x=mesh.vertices[X.ravel()][:, 0],
-    y=mesh.vertices[X.ravel()][:, 1],
-    z=mesh.vertices[X.ravel()][:, 2],
-    marker=dict(
-        size=12,
-        color=y.ravel(),  # set color to an array/list of desired values
-        colorscale="Viridis",  # choose a colorscale
-        opacity=0.8,
-        cmin=m.min(),
-        cmax=m.max(),
-    ),
+# Plot optimised inducing point locations
+fig = px.scatter_3d(
+    x=X["coords"][model.variational_strategy.inducing_points.round().long(), 0],
+    y=X["coords"][model.variational_strategy.inducing_points.round().long(), 1],
+    z=X["coords"][model.variational_strategy.inducing_points.round().long(), 2],
 )
-fig = go.Figure(data=[prediction_plot, data_plot])
-fig = update_figure(fig)
-out_str = output_dir + "preds"
-fig.write_image(out_str, "pdf")
+fig.show()
