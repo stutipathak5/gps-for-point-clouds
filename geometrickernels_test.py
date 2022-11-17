@@ -34,6 +34,10 @@ class SVGP(ApproximateGP):
         self.mean_module = gpytorch.means.ZeroMean()
         self.covar_module = kernel
 
+        #### TODO - remove later when inference working, should error if IPs being used
+        self.variational_strategy.inducing_points.requires_grad_(False)
+        ####
+
     def forward(self, x):
         mean_x = self.mean_module(x)
         covar_x = self.covar_module(x)
@@ -52,6 +56,11 @@ def get_data():
     _X_idx = torch.arange(data.shape[0])
     _X = {"idx": _X_idx, "coords": _X_coords}
     _y = torch.tensor(data[:, 3]).double()
+
+    # # TODO - Try this later; normalising GP inputs and targets to be in [0, 1]
+    # _X["idx"] = _X["idx"] / data.shape[0]
+    # _y = (_y - torch.min(_y)) / (torch.max(_y) - torch.min(_y))
+
     return _X, _y
 
 
@@ -61,6 +70,14 @@ num_data = X["coords"].shape[0]
 init_inducing_locations = torch.randint(
     0, X["coords"].shape[0], (num_inducing_points,)
 ).double()
+
+# # TODO - Try this later; randomly initialising IPs
+# init_inducing_locations = torch.rand((num_inducing_points,)).double() * num_data
+
+# # TODO - Try this later; normalising IPs (with X normalisation also)
+# init_inducing_locations /= num_data
+
+
 print("Inducing inputs shape:", init_inducing_locations.shape)
 
 # NOTE - Uncomment below to plot full initial point cloud and inducing locations
@@ -89,10 +106,6 @@ base_kernel = MaternKarhunenLoeveKernel(point_cloud, truncation_level)
 geometric_kernel = GPytorchGeometricKernel(base_kernel)
 geometric_kernel.double()
 
-#####
-print(geometric_kernel.forward(X["idx"], X["idx"]))
-#####
-
 # Build model and likelihood
 likelihood = gpytorch.likelihoods.GaussianLikelihood(
     noise_constraint=gpytorch.constraints.GreaterThan(1e-6)
@@ -117,15 +130,19 @@ optimizer = torch.optim.Adam(
 mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=y.size(0))
 
 # Train the SVGP
-n_iter = 1000
+n_iter = 10
 for i in range(n_iter):
     optimizer.zero_grad()
     output = model(X["idx"])
     loss = -mll(output, y)
     loss.backward()
     optimizer.step()
-    print(model.variational_strategy.inducing_points.round().long()[1])
     print("Iteration %d complete" % (i + 1))
+
+    # TODO - for debugging, remove later. Var dist. is being optimised but IPs aren't changing.
+    print(model.variational_strategy.inducing_points[1])
+    print(model.variational_strategy._variational_distribution.variational_mean)
+
 
 # Plot optimised inducing point locations
 # fig = px.scatter_3d(
