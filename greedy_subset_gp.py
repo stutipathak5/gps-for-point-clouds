@@ -10,7 +10,7 @@ from spaces import PointCloud
 
 
 num_eigenpairs = 500
-target_num_points = 900
+target_num_points = 600
 output_dir = "output"
 num_samples = 8
 seed = None
@@ -40,10 +40,9 @@ def get_data():
     ).double()
     X_idx = torch.arange(data.shape[0])
     X = {"idx": X_idx, "coords": X_coords}
-    y = torch.tensor(data[:, 3]).double()
 
-    # TODO - maybe try normalise inputs and target to be zero-mean and unit variance
-    # X["idx"] = (X["idx"].double() - X["idx"].double().mean()) / X["idx"].double().std()
+    # Normalise targets to zero mean and unit variance
+    y = torch.tensor(data[:, 3]).double()
     y = (y - y.mean()) / y.std()
 
     return X, y
@@ -87,7 +86,7 @@ likelihood.double()
 # Initialise model and hyperparameters
 model = GPModel(X_train, y_train, likelihood, geometric_kernel)
 hypers = {
-    "covar_module.base_kernel.lengthscale": torch.tensor(0.1),
+    "covar_module.base_kernel.lengthscale": torch.tensor(1.0),
     "covar_module.base_kernel.nu": torch.tensor(
         5.0 / 2.0
     ),  # NOTE - EQ (i.e. 5/2) seems to capture curvature best, but can try 1/2 and 3/2 too
@@ -98,23 +97,26 @@ model.double()
 """Implement greedy SoD algorithm for GP regression
 (see 'A Fast and Greedy Subset-of-Data (SoD) Scheme for Sparsification in Gaussian processes')
 """
-n_iter = 1000
+n_iter = 500
 model.train()
 likelihood.train()
 
 # 0. Pre-compute kernel hyperparameters on a randomly selected subset of our data
 optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
 mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
-for _ in range(n_iter):
+print("Estimating hyperparameters...")
+for i in range(n_iter):
     optimizer.zero_grad()
     output = model(X_train)
     loss = -mll(output, y_train)
     loss.backward()
     optimizer.step()
-    print("LS ", model.covar_module.base_kernel.lengthscale.item())
-    print("Noise ", model.likelihood.noise.item())
-    print()
-print("Hyperparameter estimation complete...")
+    if i % 25 == 0:
+        print("Iteration %d" % i)
+        print("LS ", model.covar_module.base_kernel.lengthscale.item())
+        print("Noise ", model.likelihood.noise.item())
+        print()
+print("Hyperparameter estimation complete.")
 
 model.eval()
 likelihood.eval()
@@ -149,14 +151,6 @@ for _ in range(target_num_points - 1):
 
     # 4. Compute selection metric and select next observation
     selection_metric = torch.sqrt(torch.diag(sigma_t)) + torch.abs(mu_t - y_r)
-
-    # TODO - remove (for debugging). All entries of kernels are identical,
-    # need to fix this!
-    print(mu_t)
-    print(sigma_t)
-    print(y_r)
-    print()
-
     idx_to_remove_from_remainder_set = torch.argmax(selection_metric).item()
     idx_to_add_to_active_set = remainder_set_idx[idx_to_remove_from_remainder_set]
     remainder_set_idx.pop(idx_to_remove_from_remainder_set)
