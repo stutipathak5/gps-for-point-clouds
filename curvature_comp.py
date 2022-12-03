@@ -12,8 +12,8 @@ def curvature(no_neighbors, path):
     return cloud.points
 
 # example with plot
-df=curvature(60, 'resources/clouds/bun_zipper.ply')
-df.to_csv('resources/curvature_pc/bun_zipper.csv', index=False)
+df=curvature(60, 'resources/clouds/bun_zipper_res3.ply')
+df.to_csv('resources/curvature_pc/bun_zipper_res3.csv', index=False)
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 ax.set_axis_off()
