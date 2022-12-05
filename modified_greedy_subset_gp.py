@@ -124,7 +124,7 @@ likelihood.eval()
 
 # 1. Select 10 initial observations using farthest point sampling, add to active set and
 #    remove from the remainder set
-initial_set_size = 10
+initial_set_size = 20
 remainder_set_idx = torch.tensor([x for x in range(X["idx"].size(0))])
 active_set_idx = torch.squeeze(farthest_point_sampler(torch.unsqueeze(X["coords"], 0), initial_set_size), 0)
 remainder_set_idx = remainder_set_idx[[i for i in remainder_set_idx.tolist() if i not in active_set_idx.tolist()]]
