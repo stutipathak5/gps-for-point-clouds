@@ -10,12 +10,12 @@ from spaces import PointCloud
 import time
 
 
-
+st1 = time.time()
 
 num_eigenpairs = 500
-target_num_points = 1000
-output_dir = "output"
-num_samples = 8
+target_num_points = 500
+# output_dir = "output"
+# num_samples = 8
 seed = None
 
 class GPModel(gpytorch.models.ExactGP):
@@ -32,11 +32,11 @@ class GPModel(gpytorch.models.ExactGP):
 
 def get_data():
     data = np.loadtxt(
-        "resources/curvature_pc/bun_zipper_res3.csv", skiprows=1, delimiter=","
+        "resources/curvature_cc/bun_zipper_res3.csv", skiprows=1, delimiter=","
     )
     X_coords = torch.tensor(
         np.loadtxt(
-            "resources/curvature_pc/bun_zipper_res3.csv", delimiter=",", skiprows=1
+            "resources/curvature_cc/bun_zipper_res3.csv", delimiter=",", skiprows=1
         )[:, :3]
     ).double()
     X_idx = torch.arange(data.shape[0])
@@ -104,6 +104,7 @@ likelihood.train()
 # 0. Pre-compute kernel hyperparameters on a randomly selected subset of our data
 optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
 mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
+
 print("Estimating hyperparameters...")
 for i in range(n_iter+1):
     optimizer.zero_grad()
@@ -139,30 +140,25 @@ for _ in range(int(target_num_points/initial_set_size)):
     y_i = y[active_set_idx]
     y_r = y[remainder_set_idx]
     K_ri = model.covar_module(X_r, X_i).to_dense()
-    print("x")
     K_rr = model.covar_module(X_r, X_r).to_dense()
-    print("x")
-    print(type(K_rr), K_rr)
+    # print(type(K_rr), K_rr)
     K_ii = model.covar_module(X_i, X_i).to_dense()
-    print("x")
     K_ii_plus_noise = K_ii + torch.eye(K_ii.size(0)) * likelihood.noise
-    print("x")
     K_ii_plus_noise_inv = torch.cholesky_inverse(K_ii_plus_noise)
-    print("x")
 
     mu_t = K_ri.matmul(K_ii_plus_noise_inv).matmul(y_i)
-    print("x")
     sigma_t = K_rr - K_ri.matmul(K_ii_plus_noise_inv).matmul(K_ri.T)
-    print("x")
 
-    # 4. Compute selection metric and select next observation
+    # 4. Compute selection metric and select next 10 observations (you can also increase this number independent of initial_set_size)
     selection_metric = torch.sqrt(torch.diag(sigma_t)) + torch.abs(mu_t - y_r)
     idx_to_remove_from_remainder_set = torch.topk(selection_metric, initial_set_size)[1]
     active_set_idx = torch.cat((active_set_idx, remainder_set_idx[idx_to_remove_from_remainder_set.tolist()]))
     remainder_set_idx = remainder_set_idx[np.delete(np.arange(len(remainder_set_idx)), idx_to_remove_from_remainder_set.tolist())]
 
 et = time.time()
+et1 = time.time()
 print("Time Taken:", et-st, "s")
+print("Time Taken:", et1-st1, "s")
 
 # Plot chosen locations
 # fig = px.scatter_3d(
