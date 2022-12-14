@@ -2,21 +2,18 @@ import gpytorch
 import torch
 from geometric_kernels.frontends.pytorch.gpytorch import GPytorchGeometricKernel
 from geometric_kernels.kernels import MaternKarhunenLoeveKernel
-import plotly.express as px
 import matplotlib.pyplot as plt
 from dgl.geometry import farthest_point_sampler
 import numpy as np
 from spaces import PointCloud
 import time
 
-
-st1 = time.time()
-
-num_eigenpairs = 500
-target_num_points = 500
-# output_dir = "output"
-# num_samples = 8
-seed = None
+target_num_points = int(input("Enter desired size of simplified cloud (exp. 5000): "))
+random_cloud_size = int(input("Enter desired size of randomly selected cloud (exp. 20000 (max)): "))
+file_name = str(input("Enter file name (exp. armadillo): "))
+opt_subset_size = int(input("Enter size of subset of original cloud to be used for hyperparameter estimation(exp. 200): "))
+n_iter = int(input("Enter number of times hyperparameters need to be optimized (exp. 100): "))
+initial_set_size = int(input("Enter initial size of simplified cloud (exp. 1000): "))
 
 class GPModel(gpytorch.models.ExactGP):
     def __init__(self, X, y, likelihood, kernel):
@@ -30,39 +27,42 @@ class GPModel(gpytorch.models.ExactGP):
         covar_x = self.covar_module(x)
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
-def get_data():
+def get_data(random_cloud_size, file_name):
+
     data = np.loadtxt(
-        "resources/curvature_cc/bun_zipper_res3.csv", skiprows=1, delimiter=","
+        "resources/curvature_cc/"+file_name+".csv", skiprows=1, delimiter=","
     )
     X_coords = torch.tensor(
         np.loadtxt(
-            "resources/curvature_cc/bun_zipper_res3.csv", delimiter=",", skiprows=1
+            "resources/curvature_cc/"+file_name+".csv", delimiter=",", skiprows=1
         )[:, :3]
     ).double()
     X_idx = torch.arange(data.shape[0])
+
+
+    X_idx = torch.arange(random_cloud_size)
+    f=torch.randperm(X_coords.size(0))[:random_cloud_size]
+    X_coords = X_coords[f]
+
     X = {"idx": X_idx, "coords": X_coords}
 
-    # Normalise targets to zero mean and unit variance
+    # # Normalise targets to zero mean and unit variance
     y = torch.tensor(data[:, 3]).double()
-    y = (y - y.mean()) / y.std()
+
+    y = y[f]
+
+    # y = (y - y.mean()) / y.std()
 
     return X, y
 
-# Get data, set and plot initial locations of inducing points
-X, y = get_data()
-num_data = X["coords"].shape[0]
+st1 = time.time()
 
-# NOTE - Uncomment below to plot full initial point cloud
-# fig = px.scatter_3d(
-#     x=X["coords"][:, 0],
-#     y=X["coords"][:, 1],
-#     z=X["coords"][:, 2],
-# )
-# fig.show()
+# Get data, set and plot initial locations of inducing points
+X, y = get_data(random_cloud_size, file_name)
+num_data = X["coords"].shape[0]
 
 # Select data to use for pre-computing kernel hyperparameters (can use a
 # a random subset, but we just use it all here.)
-opt_subset_size = 1889
 opt_subset_idx = torch.randperm(X["idx"].size(0))[:opt_subset_size]
 X_train = X["idx"][opt_subset_idx]
 y_train = y[opt_subset_idx]
@@ -88,7 +88,7 @@ model = GPModel(X_train, y_train, likelihood, geometric_kernel)
 hypers = {
     "covar_module.base_kernel.lengthscale": torch.tensor(1.0),
     "covar_module.base_kernel.nu": torch.tensor(
-        5.0 / 2.0
+        1000
     ),  # NOTE - EQ (i.e. 5/2) seems to capture curvature best, but can try 1/2 and 3/2 too
 }
 model.initialize(**hypers)
@@ -97,7 +97,6 @@ model.double()
 """Implement greedy SoD algorithm for GP regression
 (see 'A Fast and Greedy Subset-of-Data (SoD) Scheme for Sparsification in Gaussian processes')
 """
-n_iter = 100
 model.train()
 likelihood.train()
 
@@ -124,13 +123,15 @@ likelihood.eval()
 
 # 1. Select 10 initial observations using farthest point sampling, add to active set and
 #    remove from the remainder set
-initial_set_size = 20
+num_simp_iter = target_num_points/initial_set_size
+print("Number of simplification iterations", int(num_simp_iter))
 remainder_set_idx = torch.tensor([x for x in range(X["idx"].size(0))])
 active_set_idx = torch.squeeze(farthest_point_sampler(torch.unsqueeze(X["coords"], 0), initial_set_size), 0)
 remainder_set_idx = remainder_set_idx[[i for i in remainder_set_idx.tolist() if i not in active_set_idx.tolist()]]
 # 2. Iterate over (number of points we wish to use to represent our point cloud)/10
 st = time.time()
-for _ in range(int(target_num_points/initial_set_size)):
+for i in range(int(num_simp_iter)):
+    print("Iteration", i)
 
     # 3. Update posterior (see Eq. 3 and 4 in above paper)
     # TODO - make this quicker using updates in paper appendix (think about dense format too, avoid if possible).
@@ -140,8 +141,8 @@ for _ in range(int(target_num_points/initial_set_size)):
     y_i = y[active_set_idx]
     y_r = y[remainder_set_idx]
     K_ri = model.covar_module(X_r, X_i).to_dense()
+
     K_rr = model.covar_module(X_r, X_r).to_dense()
-    # print(type(K_rr), K_rr)
     K_ii = model.covar_module(X_i, X_i).to_dense()
     K_ii_plus_noise = K_ii + torch.eye(K_ii.size(0)) * likelihood.noise
     K_ii_plus_noise_inv = torch.cholesky_inverse(K_ii_plus_noise)
@@ -157,22 +158,24 @@ for _ in range(int(target_num_points/initial_set_size)):
 
 et = time.time()
 et1 = time.time()
-print("Time Taken:", et-st, "s")
-print("Time Taken:", et1-st1, "s")
 
-# Plot chosen locations
-# fig = px.scatter_3d(
-#     x=X["coords"][active_set_idx, 0],
-#     y=X["coords"][active_set_idx, 1],
-#     z=X["coords"][active_set_idx, 2],
-# )
-#
-# fig.update_traces(marker={'size': 2})
-# fig.show()
+#plots
+fig = plt.figure(figsize=plt.figaspect(0.5))
+ax = fig.add_subplot(121, projection='3d')
+ax.set_axis_off()
+ax.scatter(X["coords"][:, 0], X["coords"][:, 1], X["coords"][:, 2], s=1, c=y)
 
-# alternative plot using matplotlib
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
+ax = fig.add_subplot(122, projection='3d')
 ax.set_axis_off()
 ax.scatter(X["coords"][active_set_idx, 0], X["coords"][active_set_idx, 1], X["coords"][active_set_idx, 2], s=1)
+
+plt.title(
+    "Time Taken for Simplification Loop: "+str(et-st)+"s" "\n"
+    "Total Time Taken: "+ str(et1-st1)+"s"+"\n"
+    "Size of simplified cloud: "+ str(target_num_points)+"\n"
+    "Size of randomly selected cloud: "+ str(random_cloud_size)+"\n"
+    "Size of subset of original cloud used for hyperparameter estimation: "+ str(opt_subset_size)+"\n"
+    "Number of times hyperparameters are optimized: "+ str(n_iter)+"\n"
+    "Initial size of simplified cloud: "+ str(initial_set_size)
+)
 plt.show()
