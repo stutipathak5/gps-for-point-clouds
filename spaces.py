@@ -40,7 +40,7 @@ class PointCloud(DiscreteSpectrumSpace):
         :return: A Tuple of eigenvectors [Nv, num], eigenvalues [num, 1]
         """
         if num not in self.cache:
-            L, M = robust_laplacian.point_cloud_laplacian(self.vertices.numpy())
+            L, M = robust_laplacian.point_cloud_laplacian(self.vertices.cpu().numpy())
             evals, evecs = sla.eigsh(L, num, M, sigma=1e-8)
 
             # First eigenvalue can be very small (<1e-5), whereas typical values are 1e2-1e3.
