@@ -13,15 +13,18 @@ cc.initCC()
 def get_data(file_name, curv_radius):
     if file_name.endswith('.ply'):
         mesh = cc.loadMesh("resources/clouds/"+file_name)
+        faces = mesh.IndexesToNpArray()
         cloud = mesh.getAssociatedCloud()
     else:
         cloud = cc.loadPointCloud("resources/clouds/"+file_name)
+    # cc.computeNormals([cloud])
     cc.computeCurvature(cc.CurvatureType.NORMAL_CHANGE_RATE, curv_radius, [cloud])  # compute curvature as a scalar field
     nsf = cloud.getNumberOfScalarFields()
+    # norm = torch.from_numpy(cloud.getScalarField(nsf - 2).toNpArray()).double()
     curv = torch.from_numpy(cloud.getScalarField(nsf - 1).toNpArray()).double()
     coords = torch.from_numpy(cloud.toNpArrayCopy()).double()
 
-    return coords, curv
+    return coords, curv, faces
 
 # Done both
 # TODO introduce simplication ratio concept
@@ -46,15 +49,14 @@ file_name = str(input("Enter file name (exp. armadillo): "))
 st1 = time.time()
 
 # Get original point cloud
-X_coords, y = get_data(file_name, 0.002605)
+coords, curv, faces= get_data(file_name, 0.002605)
 
 # points=pd.DataFrame(X_coords, columns=['x', 'y', 'z'])
 # cloud = PyntCloud(points)
 # convex_hull_id = cloud.add_structure("convex_hull")
 # convex_hull = cloud.structures[convex_hull_id]
 # print(convex_hull.volume)
-
-original_data_size = y.shape[0]
+original_data_size = curv.shape[0]
 target_num_points = int(original_data_size*simp_ratio)
 initial_set_size = int(target_num_points/4)
 
@@ -68,9 +70,9 @@ n_iter = 50
 
 # Select smaller random point cloud
 X_idx = torch.arange(random_cloud_size)
-random_idx = torch.randperm(X_coords.size(0))[:random_cloud_size]  # randperm gives a tensor with randomly arranged values from 0 to n-1, [:n] selects first 5 values
-X_coords = X_coords[random_idx]
-y = y[random_idx]
+random_idx = torch.randperm(coords.size(0))[:random_cloud_size]  # randperm gives a tensor with randomly arranged values from 0 to n-1, [:n] selects first 5 values
+X_coords = coords[random_idx]
+y = curv[random_idx]
 y = torch.nan_to_num(y, nan=0.0)
 X = {"idx": X_idx, "coords": X_coords}
 
@@ -152,6 +154,7 @@ while active_set_size < target_num_points:
     mu_t = K_ri.matmul(K_ii_plus_noise_inv).matmul(y_i)
     sigma_t = K_rr - K_ri.matmul(K_ii_plus_noise_inv).matmul(K_ri.T)
     # 4. Compute selection metric and select next 10 observations (you can also increase this number independent of initial_set_size)
+    # TODO - two approaches for same thing: one inside loop one outside, FIX IT!
     selection_metric = torch.sqrt(torch.diag(sigma_t)) + torch.abs(mu_t - y_r)
     set_size = initial_set_size + int(initial_set_size/5)*i
     if set_size+active_set_size >= target_num_points:
@@ -165,6 +168,7 @@ while active_set_size < target_num_points:
 et = time.time()
 et1 = time.time()
 
+simp_coords = np.stack((X["coords"][active_set_idx, 0], X["coords"][active_set_idx, 1], X["coords"][active_set_idx, 2]), axis=1)
 #plots
 fig = plt.figure(figsize=plt.figaspect(2/2))
 ax = fig.add_subplot(121, projection='3d')
@@ -173,7 +177,7 @@ ax.scatter(X["coords"][:, 0], X["coords"][:, 1], X["coords"][:, 2], s=1, c=y)
 
 ax = fig.add_subplot(122, projection='3d')
 ax.set_axis_off()
-ax.scatter(X["coords"][active_set_idx, 0], X["coords"][active_set_idx, 1], X["coords"][active_set_idx, 2], s=1)
+ax.scatter(simp_coords[:, 0], simp_coords[:, 1], simp_coords[:, 2], s=1)
 
 plt.title(
     "Time Taken for Simplification Loop: "+str(et-st)+"s" "\n"
@@ -186,3 +190,13 @@ plt.title(
     "original point cloud size: "+ str(original_data_size)
 )
 plt.show()
+
+np.savez("resources/results/"+file_name+".npz", org_coords=coords.numpy(), org_faces=faces, simp_coords=simp_coords, org_curv=curv.numpy())
+
+
+
+
+
+
+
+
