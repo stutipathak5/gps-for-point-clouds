@@ -10,21 +10,29 @@ import time
 import cloudComPy as cc
 cc.initCC()
 
-def get_data(file_name, curv_radius):
+def get_data(file_name):
     if file_name.endswith('.ply'):
         mesh = cc.loadMesh("resources/clouds/"+file_name)
         faces = mesh.IndexesToNpArray()
         cloud = mesh.getAssociatedCloud()
     else:
         cloud = cc.loadPointCloud("resources/clouds/"+file_name)
+    coords = torch.from_numpy(cloud.toNpArrayCopy()).double()
+    bounding_box = cloud.getOwnBB()
+    bb_min = np.array(bounding_box.minCorner())
+    bb_max = np.array(bounding_box.maxCorner())
+    diag = bb_max - bb_min
+    volume = diag[0] * diag[1] * diag[2]
+    surface = volume ** (2 / 3)
+    surface_per_point = surface/coords.size(0)
+    radius = np.sqrt(surface_per_point * 12)
     # cc.computeNormals([cloud])
-    cc.computeCurvature(cc.CurvatureType.NORMAL_CHANGE_RATE, curv_radius, [cloud])  # compute curvature as a scalar field
+    cc.computeCurvature(cc.CurvatureType.NORMAL_CHANGE_RATE, radius, [cloud])  # compute curvature as a scalar field
     nsf = cloud.getNumberOfScalarFields()
     # norm = torch.from_numpy(cloud.getScalarField(nsf - 2).toNpArray()).double()
     curv = torch.from_numpy(cloud.getScalarField(nsf - 1).toNpArray()).double()
-    coords = torch.from_numpy(cloud.toNpArrayCopy()).double()
 
-    return coords, curv, faces
+    return coords, curv, faces, volume, radius, surface
 
 # Done both
 # TODO introduce simplication ratio concept
@@ -49,16 +57,15 @@ file_name = str(input("Enter file name (exp. armadillo): "))
 st1 = time.time()
 
 # Get original point cloud
-coords, curv, faces= get_data(file_name, 0.002605)
+coords, curv, faces, volume, radius, surface= get_data(file_name)
+print("volume", volume)
+print("radius", radius)
+print("surface", surface)
 
-# points=pd.DataFrame(X_coords, columns=['x', 'y', 'z'])
-# cloud = PyntCloud(points)
-# convex_hull_id = cloud.add_structure("convex_hull")
-# convex_hull = cloud.structures[convex_hull_id]
-# print(convex_hull.volume)
 original_data_size = curv.shape[0]
 target_num_points = int(original_data_size*simp_ratio)
-initial_set_size = int(target_num_points/4)
+initial_set_size = int(target_num_points/3)
+# initial_set_size = int(radius*1000)
 
 if original_data_size > 15000:
     random_cloud_size = 15000
@@ -169,11 +176,12 @@ et = time.time()
 et1 = time.time()
 
 simp_coords = np.stack((X["coords"][active_set_idx, 0], X["coords"][active_set_idx, 1], X["coords"][active_set_idx, 2]), axis=1)
+
 #plots
 fig = plt.figure(figsize=plt.figaspect(2/2))
-ax = fig.add_subplot(121, projection='3d')
-ax.set_axis_off()
-ax.scatter(X["coords"][:, 0], X["coords"][:, 1], X["coords"][:, 2], s=1, c=y)
+# ax = fig.add_subplot(121, projection='3d')
+# ax.set_axis_off()
+# ax.scatter(coords[:, 0], coords[:, 1], coords[:, 2], s=1, c=curv)
 
 ax = fig.add_subplot(122, projection='3d')
 ax.set_axis_off()
@@ -192,11 +200,3 @@ plt.title(
 plt.show()
 
 np.savez("resources/results/"+file_name+".npz", org_coords=coords.numpy(), org_faces=faces, simp_coords=simp_coords, org_curv=curv.numpy())
-
-
-
-
-
-
-
-
