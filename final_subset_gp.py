@@ -64,7 +64,7 @@ print("surface", surface)
 
 original_data_size = curv.shape[0]
 target_num_points = int(original_data_size*simp_ratio)
-initial_set_size = int(target_num_points/3)
+initial_set_size = int(target_num_points/4)        # TODO the bigger point cloud is the bigger sh0uld be this factor 4 here, figure this out!
 # initial_set_size = int(radius*1000)
 
 if original_data_size > 15000:
@@ -72,7 +72,7 @@ if original_data_size > 15000:
 else:
     random_cloud_size = original_data_size
 
-opt_subset_size = 100
+opt_subset_size = 100        
 n_iter = 50
 
 # Select smaller random point cloud
