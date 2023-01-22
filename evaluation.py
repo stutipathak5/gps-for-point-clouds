@@ -1,4 +1,4 @@
-# from quad_mesh_simplify import simplify_mesh
+import sys
 from chamferdist import ChamferDistance
 import torch
 import pytorch3d
@@ -6,6 +6,9 @@ import numpy as np
 import open3d as o3d
 from dgl.geometry import farthest_point_sampler
 import matplotlib.pyplot as plt
+
+# sys.path.insert(0, "quadric_mesh_simplification") # TODO - remove if not needed?
+from quad_mesh_simplify import simplify_mesh
 
 data = np.load("resources/results/" + "bun_zipper.ply" + ".npz")
 org_coords, org_faces, simp_coords, org_curv = (
@@ -36,14 +39,11 @@ fps_idx = torch.squeeze(
 fps_simp = org_coords[fps_idx]
 
 # Quadric Error Metric
-target_num_points = 1000  # TODO - remove
-dataset = o3d.data.BunnyMesh()
-bunny_mesh = o3d.io.read_triangle_mesh(dataset.path)
-qdm = bunny_mesh.simplify_quadric_decimation(
-    target_number_of_triangles=target_num_points
+qdm_simp_coords, qdm_simp_faces = simplify_mesh(
+    org_coords.numpy().astype(np.float64),
+    org_faces.numpy().astype(np.uint32),
+    target_num_points,
 )
-qdm_simp_coords = np.asarray(qdm.vertices)
-
 
 # plots
 fig = plt.figure(figsize=plt.figaspect(1))
