@@ -1,3 +1,6 @@
 *.egg-info
 **__pycache__
 output/
+.idea*
+point_clouds*
+csf_setup.sh
