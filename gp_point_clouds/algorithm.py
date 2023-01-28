@@ -3,10 +3,10 @@ import torch
 import gpytorch
 import numpy as np
 from geometric_kernels.frontends.pytorch.gpytorch import GPytorchGeometricKernel
-from geometric_kernels.kernels import MaternKarhunenLoeveKernel
 from dgl.geometry import farthest_point_sampler
 from gp_point_clouds.spaces import PointCloud
 from gp_point_clouds.model import GPModel
+from gp_point_clouds.kernel import MaternKarhunenLoeveKernelDeviceAgnostic
 
 
 class SubsetAlgorithm:
@@ -45,11 +45,11 @@ class SubsetAlgorithm:
 
         # Select smaller random point cloud
         X_idx = torch.arange(random_cloud_size, device=self.device)
-        random_idx = torch.randperm(coords.shape[0], device=self.device)[
+        random_idx = torch.randperm(self.coords.shape[0], device=self.device)[
             :random_cloud_size
         ]  # randperm gives a tensor with randomly arranged values from 0 to n-1, [:n] selects first 5 values
-        X_coords = coords[random_idx]
-        y = curv[random_idx]
+        X_coords = self.coords[random_idx]
+        y = self.curv[random_idx]
         self.y = torch.nan_to_num(y, nan=0.0).to(device)
         self.X = {"idx": X_idx.to(device), "coords": X_coords.to(device)}
 
@@ -63,7 +63,9 @@ class SubsetAlgorithm:
 
         # Construct our geometric kernel
         truncation_level = 20
-        base_kernel = MaternKarhunenLoeveKernel(self.point_cloud, truncation_level)
+        base_kernel = MaternKarhunenLoeveKernelDeviceAgnostic(
+            self.point_cloud, truncation_level, device=self.device
+        )
         self.geometric_kernel = gpytorch.kernels.ScaleKernel(
             GPytorchGeometricKernel(base_kernel)
         ).to(self.device)
