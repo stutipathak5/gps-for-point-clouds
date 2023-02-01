@@ -3,6 +3,7 @@ import torch
 import matplotlib.pyplot as plt
 import numpy as np
 from gp_point_clouds.algorithm import SubsetAlgorithm
+from gp_point_clouds.data import get_data
 
 # GPU initialisation (if available)
 if torch.cuda.is_available():
@@ -13,52 +14,56 @@ else:
 
 print("Device:", device, "\n")
 
-# Done both
-# TODO introduce simplication ratio concept
-# TODO assumed that target_num_points is a multiple of initial_set_size: CORRECT THIS
-simp_ratio = float(input("Enter desired simplification ratio (exp. 0.01): ") or 0.01)
-file_name = str(input("Enter file name (exp. armadillo): ") or "bun_zipper_res3")
-
 total_start = time.time()
 
-# Control flow for CloudComPy (mainly for Tom as can't install it!)
-cc_flag = str(input("Use CloudComPy? Answer y or n: "))
-if cc_flag == "y":
-    print("Using CloudComPy....")
-    import cloudComPy as cc
-    from gp_point_clouds.data import get_data
-
-    cc.initCC()
-
-    # Get original point cloud using CloudComPy
-    coords, curv, faces, volume, radius, surface = get_data(file_name)
-    save_faces = True
-
-else:
-    print("Not using CloudComPy, using pre-saved curvature computations...")
-
-    # Get original point cloud and curvatures from saved files
-    data = np.loadtxt(
-        "resources/curvature_cc/" + file_name + ".csv", delimiter=",", skiprows=1
+# Give user option to use simplification ratio or raw parameters
+mode = int(input("Enter 0 for simp_ratio mode and 1 for parameters mode: ") or 0)
+if mode == 0:
+    simp_ratio = float(
+        input("Enter desired simplification ratio (exp. 0.01): ") or 0.01
     )
-    coords = torch.from_numpy(data[:, :3]).double()
-    curv = torch.from_numpy(data[:, 3]).double()
-    save_faces = False
-
-original_data_size = curv.shape[0]
-target_num_points = int(original_data_size * simp_ratio)
-initial_set_size = int(
-    target_num_points / 4
-)  # TODO the bigger point cloud is the bigger sh0uld be this factor 4 here, figure this out!
-# initial_set_size = int(radius*1000)
-
-if original_data_size > 15000:
-    random_cloud_size = 15000
+    file_name = str(
+        input("Enter file name (exp. bun_zipper_res3.ply): ") or "bun_zipper_res3.ply"
+    )
+    # Get original point cloud
+    coords, curv, faces = get_data(file_name, device=device)
+    original_data_size = curv.shape[0]
+    if original_data_size > 15000:
+        random_cloud_size = 15000
+    else:
+        random_cloud_size = original_data_size
+    target_num_points = int(original_data_size * simp_ratio)
+    initial_set_size = int(target_num_points / 3)
+    # initial_set_size = int(radius*1000)
+    opt_subset_size = 100
+    n_iter = 100
 else:
-    random_cloud_size = original_data_size
-
-opt_subset_size = 100
-n_iter = 50
+    target_num_points = int(
+        input("Enter desired size of simplified cloud (exp. 5000): ") or 5000
+    )
+    random_cloud_size = int(
+        input("Enter desired size of randomly selected cloud (exp. 20000 (max)): ")
+        or 20000
+    )
+    file_name = str(
+        input("Enter file name (exp. bun_zipper_res3.ply): ") or "bun_zipper_res3.ply"
+    )
+    opt_subset_size = int(
+        input(
+            "Enter size of subset of original cloud to be used for hyperparameter estimation(exp. 200): "
+        )
+        or 200
+    )
+    n_iter = int(
+        input("Enter number of times hyperparameters need to be optimized (exp. 100): ")
+        or 100
+    )
+    initial_set_size = int(
+        input("Enter initial size of simplified cloud (exp. 1000): ") or 1000
+    )
+    # Get original point cloud
+    coords, curv, faces = get_data(file_name, device=device)
+    original_data_size = curv.shape[0]
 
 # Initialise and run algorithm
 alg = SubsetAlgorithm(
@@ -100,19 +105,10 @@ plt.title(
 )
 plt.show()
 
-if save_faces:
-    np.savez(
-        "resources/results/" + file_name + ".npz",
-        org_coords=coords.numpy(),
-        org_faces=faces,
-        simp_coords=simp_coords,
-        org_curv=curv.numpy(),
-    )
-else:
-    # NOTE - can't use evaluation metrics etc. if faces not saved to results file
-    np.savez(
-        "resources/results/" + file_name + ".npz",
-        org_coords=coords.numpy(),
-        simp_coords=simp_coords,
-        org_curv=curv.numpy(),
-    )
+np.savez(
+    "resources/results/" + file_name + ".npz",
+    org_coords=coords.cpu().numpy(),
+    org_faces=faces.cpu().numpy(),
+    simp_coords=simp_coords,
+    org_curv=curv.cpu().numpy(),
+)
