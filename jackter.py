@@ -187,3 +187,11 @@ plt.title(
     "original point cloud size: "+ str(original_data_size)
 )
 plt.show()
+
+
+np.savez("resources/results/"+file_name+".npz", org_coords=coords.numpy(),
+         org_faces=faces, simp_coords=simp_coords, org_curv=curv.numpy())
+
+
+
+np.savetxt("resources/results/foo.csv", simp_coords, delimiter=",")
