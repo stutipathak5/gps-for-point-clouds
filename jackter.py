@@ -14,7 +14,7 @@ def get_data(file_name):
     mesh = o3d.io.read_triangle_mesh("resources/clouds/"+file_name)
     coords = torch.from_numpy(np.asarray(mesh.vertices)).double()
     faces = np.asarray(mesh.triangles)
-    curv = torch.from_numpy(compute_features(coords, search_radius=0.15, feature_names=["surface_variation"])).double()
+    curv = torch.from_numpy(compute_features(coords, search_radius=0.002605, feature_names=["surface_variation"])).double().squeeze(1)
     return coords, curv, faces
 
 # Done both
@@ -188,10 +188,9 @@ plt.title(
 )
 plt.show()
 
-
-np.savez("resources/results/"+file_name+".npz", org_coords=coords.numpy(),
-         org_faces=faces, simp_coords=simp_coords, org_curv=curv.numpy())
-
-
-
-np.savetxt("resources/results/foo.csv", simp_coords, delimiter=",")
+# np.savez("resources/results/"+file_name+".npz", org_coords=coords.numpy(),
+#          org_faces=faces, simp_coords=simp_coords, org_curv=curv.numpy())
+#
+#
+#
+# np.savetxt("resources/results/foo.csv", simp_coords, delimiter=",")
