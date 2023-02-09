@@ -1,5 +1,9 @@
 import time
 import torch
+
+# import matplotlib as mpl # NOTE - need this to save plots on HPC
+
+# mpl.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from gp_point_clouds.algorithm import SubsetAlgorithm
@@ -103,6 +107,8 @@ plt.title(
     "Initial size of simplified cloud: " + str(initial_set_size) + "\n"
     "original point cloud size: " + str(original_data_size)
 )
+# plt.tight_layout()
+# plt.savefig('simplified_cloud.pdf')
 plt.show()
 
 np.savez(
