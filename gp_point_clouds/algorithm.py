@@ -191,3 +191,5 @@ class SubsetAlgorithm:
         )
 
         return simp_coords, simp_loop_time
+
+
