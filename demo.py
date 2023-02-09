@@ -14,39 +14,38 @@ else:
 
 print("Device:", device, "\n")
 
-total_start = time.time()
-
 # Give user option to use simplification ratio or raw parameters
 mode = int(input("Enter 0 for simp_ratio mode and 1 for parameters mode: ") or 0)
+
+file_name = str(
+    input("Enter file name (exp. bun_zipper_res3.ply): ") or "bun_zipper_res3.ply"
+)
+
+total_start1 = time.time()
+# Get original point cloud
+coords, curv, faces = get_data(file_name, device=device)
+original_data_size = curv.shape[0]
+total_stop1 = time.time()
+print(
+    "Original point cloud size (decide simp_ratio/params accordingly)",
+    original_data_size,
+)
+
+
 if mode == 0:
+
     simp_ratio = float(
         input("Enter desired simplification ratio (exp. 0.01): ") or 0.01
     )
-    file_name = str(
-        input("Enter file name (exp. bun_zipper_res3.ply): ") or "bun_zipper_res3.ply"
-    )
-    # Get original point cloud
-    coords, curv, faces = get_data(file_name, device=device)
-    original_data_size = curv.shape[0]
-    if original_data_size > 15000:
-        random_cloud_size = 15000
-    else:
-        random_cloud_size = original_data_size
-    target_num_points = int(original_data_size * simp_ratio)
-    initial_set_size = int(target_num_points / 3)
-    # initial_set_size = int(radius*1000)
-    opt_subset_size = 100
-    n_iter = 100
+
 else:
+
     target_num_points = int(
         input("Enter desired size of simplified cloud (exp. 5000): ") or 5000
     )
     random_cloud_size = int(
         input("Enter desired size of randomly selected cloud (exp. 20000 (max)): ")
         or 20000
-    )
-    file_name = str(
-        input("Enter file name (exp. bun_zipper_res3.ply): ") or "bun_zipper_res3.ply"
     )
     opt_subset_size = int(
         input(
@@ -61,9 +60,25 @@ else:
     initial_set_size = int(
         input("Enter initial size of simplified cloud (exp. 1000): ") or 1000
     )
-    # Get original point cloud
-    coords, curv, faces = get_data(file_name, device=device)
-    original_data_size = curv.shape[0]
+
+total_start2 = time.time()
+if mode == 0:
+
+    if original_data_size > 45000:
+        random_cloud_size = 45000
+    else:
+        random_cloud_size = original_data_size
+
+    target_num_points = int(original_data_size * simp_ratio)
+    initial_set_size = int(target_num_points / 3)
+    if initial_set_size > random_cloud_size:
+        initial_set_size = int(random_cloud_size / 3)
+    opt_subset_size = 100
+    n_iter = 100
+    print("\nTarget size of simplified cloud:", target_num_points)
+    print("Random cloud size:", random_cloud_size)
+    print("Initial set size:", initial_set_size)
+    print()
 
 # Initialise and run algorithm
 alg = SubsetAlgorithm(
@@ -77,15 +92,14 @@ alg = SubsetAlgorithm(
     device,
 )
 simp_coords, simp_loop_time = alg.run()
-total_time = time.time() - total_start
+total_stop2 = time.time()
+total_time = total_stop2 - total_start2 + total_stop1 - total_start1
 
 # Plotting
 fig = plt.figure(figsize=plt.figaspect(2 / 2))
-
 # ax = fig.add_subplot(121, projection='3d')
 # ax.set_axis_off()
 # ax.scatter(coords[:, 0], coords[:, 1], coords[:, 2], s=1, c=curv)
-
 ax = fig.add_subplot(122, projection="3d")
 ax.set_axis_off()
 ax.scatter(simp_coords[:, 0], simp_coords[:, 1], simp_coords[:, 2], s=1)
@@ -105,10 +119,11 @@ plt.title(
 )
 plt.show()
 
-np.savez(
-    "resources/results/" + file_name + ".npz",
-    org_coords=coords.cpu().numpy(),
-    org_faces=faces.cpu().numpy(),
-    simp_coords=simp_coords,
-    org_curv=curv.cpu().numpy(),
-)
+# np.savez(
+#     "resources/results/" + file_name + ".npz",
+#     org_coords=coords.cpu().numpy(),
+#     org_faces=faces.cpu().numpy(),
+#     simp_coords=simp_coords,
+#     org_curv=curv.cpu().numpy(),
+# )
+np.savetxt("resources/results/" + file_name + ".xyz", simp_coords)

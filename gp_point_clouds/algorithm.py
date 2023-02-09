@@ -56,7 +56,7 @@ class SubsetAlgorithm:
         # Select an even smaller set of random datapoints to estimate gp hyperparameters
         opt_subset_idx = torch.randperm(self.X["idx"].shape[0])[:opt_subset_size]
         self.X_train = self.X["idx"][opt_subset_idx].to(device)
-        self.y_train = y[opt_subset_idx].to(device)
+        self.y_train = self.y[opt_subset_idx].to(device)
 
         # Initialise space for kernel
         self.point_cloud = PointCloud(self.X["coords"])
@@ -191,3 +191,5 @@ class SubsetAlgorithm:
         )
 
         return simp_coords, simp_loop_time
+
+

@@ -9,8 +9,8 @@ def get_data(file_name, device="cpu"):
     mesh = IO().load_mesh("resources/clouds/" + file_name, device=device)
     coords, faces = mesh.verts_list()[0].double(), mesh.faces_list()[0].double()
     pcd = Pointclouds(points=mesh.verts_list())
-    bounding_box = pcd.get_bounding_boxes()
-    bb_min, bb_max = np.array(bounding_box[0,:,0]), np.array(bounding_box[0,:,1])
+    bounding_box = pcd.get_bounding_boxes().cpu().numpy()
+    bb_min, bb_max = np.array(bounding_box[0, :, 0]), np.array(bounding_box[0, :, 1])
     diag = bb_max - bb_min
     volume = diag[0] * diag[1] * diag[2]
     surface = volume ** (2 / 3)

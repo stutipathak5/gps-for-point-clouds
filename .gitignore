@@ -4,3 +4,4 @@ output/
 .idea*
 point_clouds*
 csf_setup.sh
+lucy.ply
