@@ -1,9 +1,5 @@
 import time
 import torch
-
-# import matplotlib as mpl # NOTE - need this to save plots on HPC
-
-# mpl.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from gp_point_clouds.algorithm import SubsetAlgorithm
@@ -30,7 +26,10 @@ total_start1 = time.time()
 coords, curv, faces = get_data(file_name, device=device)
 original_data_size = curv.shape[0]
 total_stop1 = time.time()
-print("Original point cloud size (decide simp_ratio/params accordingly)", original_data_size)
+print(
+    "Original point cloud size (decide simp_ratio/params accordingly)",
+    original_data_size,
+)
 
 
 if mode == 0:
@@ -65,16 +64,21 @@ else:
 total_start2 = time.time()
 if mode == 0:
 
-    if original_data_size > 15000:
-        random_cloud_size = 15000
+    if original_data_size > 45000:
+        random_cloud_size = 45000
     else:
         random_cloud_size = original_data_size
 
     target_num_points = int(original_data_size * simp_ratio)
     initial_set_size = int(target_num_points / 3)
-    # initial_set_size = int(radius*1000)
+    if initial_set_size > random_cloud_size:
+        initial_set_size = int(random_cloud_size / 3)
     opt_subset_size = 100
     n_iter = 100
+    print("\nTarget size of simplified cloud:", target_num_points)
+    print("Random cloud size:", random_cloud_size)
+    print("Initial set size:", initial_set_size)
+    print()
 
 # Initialise and run algorithm
 alg = SubsetAlgorithm(
@@ -89,15 +93,13 @@ alg = SubsetAlgorithm(
 )
 simp_coords, simp_loop_time = alg.run()
 total_stop2 = time.time()
-total_time = total_stop2-total_start2+total_stop1-total_start1
+total_time = total_stop2 - total_start2 + total_stop1 - total_start1
 
 # Plotting
 fig = plt.figure(figsize=plt.figaspect(2 / 2))
-
 # ax = fig.add_subplot(121, projection='3d')
 # ax.set_axis_off()
 # ax.scatter(coords[:, 0], coords[:, 1], coords[:, 2], s=1, c=curv)
-
 ax = fig.add_subplot(122, projection="3d")
 ax.set_axis_off()
 ax.scatter(simp_coords[:, 0], simp_coords[:, 1], simp_coords[:, 2], s=1)
@@ -115,14 +117,13 @@ plt.title(
     "Initial size of simplified cloud: " + str(initial_set_size) + "\n"
     "original point cloud size: " + str(original_data_size)
 )
-# plt.tight_layout()
-# plt.savefig('simplified_cloud.pdf')
 plt.show()
 
-np.savez(
-    "resources/results/" + file_name + ".npz",
-    org_coords=coords.cpu().numpy(),
-    org_faces=faces.cpu().numpy(),
-    simp_coords=simp_coords,
-    org_curv=curv.cpu().numpy(),
-)
+# np.savez(
+#     "resources/results/" + file_name + ".npz",
+#     org_coords=coords.cpu().numpy(),
+#     org_faces=faces.cpu().numpy(),
+#     simp_coords=simp_coords,
+#     org_curv=curv.cpu().numpy(),
+# )
+np.savetxt("resources/results/" + file_name + ".xyz", simp_coords)
