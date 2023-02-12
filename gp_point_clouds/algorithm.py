@@ -122,6 +122,14 @@ class SubsetAlgorithm:
         remainder_set_idx = torch.tensor(
             [x for x in range(self.X["idx"].shape[0])], device=self.device
         )
+        # tcp_idx = torch.topk(self.y, self.initial_set_size/3)[1]
+        # fps_idx = torch.squeeze(
+        #     farthest_point_sampler(
+        #         torch.unsqueeze(self.X["coords"], 0), self.initial_set_size
+        #     ),
+        #     0,
+        # )
+        # active_set_idx = torch.cat((tcp_idx,fps_idx))
         active_set_idx = torch.squeeze(
             farthest_point_sampler(
                 torch.unsqueeze(self.X["coords"], 0), self.initial_set_size
@@ -191,5 +199,3 @@ class SubsetAlgorithm:
         )
 
         return simp_coords, simp_loop_time
-
-

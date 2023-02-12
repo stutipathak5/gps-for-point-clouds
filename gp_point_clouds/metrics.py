@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-import open3d as o3d
+# import open3d as o3d
 from pytorch3d.ops import knn_points
 from pytorch3d.loss import chamfer_distance
 
@@ -53,5 +53,6 @@ def compute_all_metrics(orig_coords, simp_coords):
 
     # Surface Reconstruction
     # TODO
+
 
     return norm_consis, chamf_dist
