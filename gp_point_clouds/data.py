@@ -14,12 +14,12 @@ def get_data_jak(file_name, device="cpu"):
     pcd = Pointclouds(points=mesh.verts_list())
     bounding_box = pcd.get_bounding_boxes()
     # bb_min, bb_max = torch.tensor(bounding_box[0,:,0], device=device), torch.tensor(bounding_box[0,:,1], device=device)
-    diag = bounding_box[0,:,1] - bounding_box[0,:,0]
+    diag = bounding_box[0, :, 1] - bounding_box[0, :, 0]
     volume = diag[0] * diag[1] * diag[2]
     surface = volume ** (2 / 3)
     surface_per_point = surface / coords.size(0)
     radius = torch.sqrt(surface_per_point * 12)
-    t1=time.time()
+    t1 = time.time()
     curv = (
         torch.from_numpy(
             compute_features(
@@ -33,10 +33,9 @@ def get_data_jak(file_name, device="cpu"):
         .to(device)
     )
     t2 = time.time()
-    print("time jak", t2-t1)
+    # print("time jak", t2 - t1)
 
     return coords, curv, faces
-
 
 
 def get_data_cc(file_name):
@@ -67,8 +66,6 @@ def get_data_cc(file_name):
     nsf = cloud.getNumberOfScalarFields()
     # norm = torch.from_numpy(cloud.getScalarField(nsf - 2).toNpArray()).double()
     curv = torch.from_numpy(cloud.getScalarField(nsf - 1).toNpArray()).double()
-    print("time cc", t2-t1)
+    # print("time cc", t2 - t1)
 
     return coords, curv, faces, volume, radius, surface
-
-

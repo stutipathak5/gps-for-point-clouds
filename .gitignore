@@ -5,3 +5,5 @@ output/
 point_clouds*
 csf_setup.sh
 lucy.ply
+quadric-mesh-simplification/
+resources/results/

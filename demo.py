@@ -13,12 +13,15 @@ else:
     device = "cpu"
 print("Device:", device, "\n")
 
-device="cpu"
-
 # Give user option to use simplification ratio or raw parameters
 mode = int(input("Enter 0 for simp_ratio mode and 1 for parameters mode: ") or 0)
 
-mode2= int(input("Enter 0 to use CloudComPy and 1 to use Jakteristic for curvature calculation: ") or 0)
+mode2 = int(
+    input(
+        "Enter 0 to use CloudComPy and 1 to use Jakteristic for curvature calculation: "
+    )
+    or 0
+)
 
 file_name = str(
     input("Enter file name (exp. bun_zipper_res3.ply): ") or "bun_zipper_res3.ply"
@@ -26,14 +29,17 @@ file_name = str(
 
 total_start1 = time.time()
 # Get original point cloud
-if mode2==0:
+if mode2 == 0:
     coords, curv, faces, volume, radius, surface = get_data_cc(file_name)
 else:
     coords, curv, faces = get_data_jak(file_name, device=device)
 
 original_data_size = curv.shape[0]
 total_stop1 = time.time()
-print("Original point cloud size (decide simp_ratio/params accordingly)", original_data_size)
+print(
+    "Original point cloud size (decide simp_ratio/params accordingly)",
+    original_data_size,
+)
 
 
 if mode == 0:
@@ -93,7 +99,7 @@ alg = SubsetAlgorithm(
 )
 simp_coords, simp_loop_time = alg.run()
 total_stop2 = time.time()
-total_time = total_stop2-total_start2+total_stop1-total_start1
+total_time = total_stop2 - total_start2 + total_stop1 - total_start1
 
 # Plotting
 fig = plt.figure(figsize=plt.figaspect(2 / 2))
@@ -121,19 +127,39 @@ plt.title(
 )
 plt.show()
 
-if mode==0:
-    np.savetxt("resources/results/"+ file_name.replace(".ply", "_")+str(simp_ratio)+".xyz", simp_coords, delimiter=" ")
+if mode == 0:
+    np.savetxt(
+        "resources/results/"
+        + file_name.replace(".ply", "_")
+        + str(simp_ratio)
+        + ".xyz",
+        simp_coords,
+        delimiter=" ",
+    )
     np.savez(
-        "resources/results/"+ file_name.replace(".ply", "_")+str(simp_ratio) +".npz",
+        "resources/results/"
+        + file_name.replace(".ply", "_")
+        + str(simp_ratio)
+        + ".npz",
         org_coords=coords.cpu().numpy(),
         org_faces=faces.cpu().numpy(),
         simp_coords=simp_coords,
         org_curv=curv.cpu().numpy(),
     )
 else:
-    np.savetxt("resources/results/"+ file_name.replace(".ply", "_")+str(target_num_points) +".xyz", simp_coords, delimiter=" ")
+    np.savetxt(
+        "resources/results/"
+        + file_name.replace(".ply", "_")
+        + str(target_num_points)
+        + ".xyz",
+        simp_coords,
+        delimiter=" ",
+    )
     np.savez(
-        "resources/results/"+ file_name.replace(".ply", "_")+str(target_num_points) +".npz",
+        "resources/results/"
+        + file_name.replace(".ply", "_")
+        + str(target_num_points)
+        + ".npz",
         org_coords=coords.cpu().numpy(),
         org_faces=faces.cpu().numpy(),
         simp_coords=simp_coords,
