@@ -81,8 +81,8 @@ else:
 total_start2 = time.time()
 if mode == 0:
 
-    if original_data_size > 15000:
-        random_cloud_size = 15000
+    if original_data_size > 25000:
+        random_cloud_size = 25000
     else:
         random_cloud_size = original_data_size
 
