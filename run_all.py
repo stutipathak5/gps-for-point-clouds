@@ -41,7 +41,7 @@ else:
     device = "cpu"
 print("Device:", device, "\n")
 
-device = "cpu"   # comment for gpu use
+# device = "cpu"   # comment for gpu use
 
 
 # Loop through all clouds for all specified ratios
