@@ -20,7 +20,7 @@ mode = 1             # 0 for simp ratio mode and 1 for param mode
 
 
 curv_mode = "jak"  # Backend for curvature computation; use 'cc' for CloudComPy
-neigh_size = 30
+neigh_size = 30    # neighbourhood size for curvature computation
 max_random_cloud_size = 25000  # Max. random cloud size (using ~45k on A100 GPU)
 opt_subset_size = 300
 n_iter = 100
