@@ -14,11 +14,24 @@ from gp_point_clouds.baselines import (
     qem_simplify,
 )
 
-# Define clouds to simplify and desired simplification ratios for each.
-clouds = {"bun_zipper.ply": [0.1, 0.2, 0.3]}  # , "lucy.ply": [0.001, 0.002]}
+
+
+mode = 0             # 0 for simp ratio mode and 1 for param mode
+
 
 curv_mode = "jak"  # Backend for curvature computation; use 'cc' for CloudComPy
-max_random_cloud_size = 45000  # Max. random cloud size (using ~45k on A100 GPU)
+neigh_size = 30
+max_random_cloud_size = 25000  # Max. random cloud size (using ~45k on A100 GPU)
+opt_subset_size = 300
+n_iter = 100
+
+if mode == 0:
+    # Define clouds to simplify and desired simplification ratios for each.
+    clouds = {"bun_zipper.ply": [0.1]}  # , "lucy.ply": [0.001, 0.002]}
+else:
+    # Define clouds to simplify and desired target sizes for each.
+    clouds = {"bun_zipper.ply": [3000, 6000, 10000]}  # , "lucy.ply": [15000, 20000]}
+    initial_set_sizes = [1000, 2000, 3000]
 
 # GPU initialisation (if available)
 if torch.cuda.is_available():
@@ -28,36 +41,42 @@ else:
     device = "cpu"
 print("Device:", device, "\n")
 
+device = "cpu"   # comment for gpu use
+
+
 # Loop through all clouds for all specified ratios
 for cloud in clouds:
     for simp_ratio in clouds[cloud]:
-
+        i=1
+        print("Simplification no." + str(i))
         # 1. Run algorithm and store results
 
         # Get original point cloud
         curv_start = time.time()
         if curv_mode == "cc":
-            coords, curv, faces, volume, radius, surface = get_data_cc(cloud)
+            coords, curv, faces = get_data_cc(cloud, neigh_size)
         elif curv_mode == "jak":
-            coords, curv, faces = get_data_jak(cloud, device=device)
+            coords, curv, faces = get_data_jak(cloud, neigh_size, device=device)
         else:
             raise NotImplementedError("Select valid curvature backend from [jak, cc]")
         original_data_size = curv.shape[0]
         curv_time = time.time() - curv_start
 
+        simp_start = time.time()
         # Define algorithm parameters
         if original_data_size > max_random_cloud_size:
             random_cloud_size = max_random_cloud_size
         else:
             random_cloud_size = original_data_size
 
-        target_num_points = int(original_data_size * simp_ratio)
-        initial_set_size = int(target_num_points / 3)
-        opt_subset_size = 100
-        n_iter = 100
-
+        if mode == 0:
+            target_num_points = int(original_data_size * simp_ratio)
+            initial_set_size = int(target_num_points / 3)
+        else:
+            target_num_points = simp_ratio
+            initial_set_size = initial_set_sizes[i-1]
+        i+=1
         # Initialise and run algorithm
-        simp_start = time.time()
         alg = SubsetAlgorithm(
             coords,
             curv,

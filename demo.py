@@ -13,26 +13,33 @@ else:
     device = "cpu"
 print("Device:", device, "\n")
 
+device = "cpu"  # comment for gpu use
+
 # Give user option to use simplification ratio or raw parameters
-mode = int(input("Enter 0 for simp_ratio mode and 1 for parameters mode: ") or 0)
+mode = int(input("Enter 0 for simp_ratio mode and 1 for parameters mode: ") or 1)
 
 mode2 = int(
     input(
         "Enter 0 to use CloudComPy and 1 to use Jakteristic for curvature calculation: "
     )
-    or 0
+    or 1
 )
 
 file_name = str(
-    input("Enter file name (exp. bun_zipper_res3.ply): ") or "bun_zipper_res3.ply"
+    input("Enter file name (exp. bun_zipper.ply): ") or "bun_zipper.ply"
+)
+
+neigh_size = int(
+    input("Enter neighbourhood size for curvature computation: ")
+    or 30
 )
 
 total_start1 = time.time()
 # Get original point cloud
 if mode2 == 0:
-    coords, curv, faces, volume, radius, surface = get_data_cc(file_name)
+    coords, curv, faces = get_data_cc(file_name, neigh_size)
 else:
-    coords, curv, faces = get_data_jak(file_name, device=device)
+    coords, curv, faces = get_data_jak(file_name, neigh_size, device=device)
 
 original_data_size = curv.shape[0]
 total_stop1 = time.time()
@@ -55,13 +62,13 @@ else:
     )
     random_cloud_size = int(
         input("Enter desired size of randomly selected cloud (exp. 20000 (max)): ")
-        or 20000
+        or 25000
     )
     opt_subset_size = int(
         input(
             "Enter size of subset of original cloud to be used for hyperparameter estimation(exp. 200): "
         )
-        or 100
+        or 300
     )
     n_iter = int(
         input("Enter number of times hyperparameters need to be optimized (exp. 100): ")
@@ -81,9 +88,8 @@ if mode == 0:
 
     target_num_points = int(original_data_size * simp_ratio)
     initial_set_size = int(target_num_points / 3)
-    print(initial_set_size)
     # initial_set_size = int(radius*1000)
-    opt_subset_size = 100
+    opt_subset_size = 300
     n_iter = 100
 
 # Initialise and run algorithm
@@ -165,3 +171,5 @@ else:
         simp_coords=simp_coords,
         org_curv=curv.cpu().numpy(),
     )
+
+
