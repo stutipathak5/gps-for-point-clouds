@@ -16,7 +16,7 @@ from gp_point_clouds.baselines import (
 
 
 
-mode = 0             # 0 for simp ratio mode and 1 for param mode
+mode = 1             # 0 for simp ratio mode and 1 for param mode
 
 
 curv_mode = "jak"  # Backend for curvature computation; use 'cc' for CloudComPy
@@ -30,8 +30,8 @@ if mode == 0:
     clouds = {"bun_zipper.ply": [0.1]}  # , "lucy.ply": [0.001, 0.002]}
 else:
     # Define clouds to simplify and desired target sizes for each.
-    clouds = {"bun_zipper.ply": [3000, 6000, 10000]}  # , "lucy.ply": [15000, 20000]}
-    initial_set_sizes = [1000, 2000, 3000]
+    clouds = {"bun_zipper.ply": [3000, 6000]}  # , "lucy.ply": [15000, 20000]}
+    initial_set_sizes = [1000, 2000]
 
 # GPU initialisation (if available)
 if torch.cuda.is_available():
@@ -46,9 +46,9 @@ device = "cpu"   # comment for gpu use
 
 # Loop through all clouds for all specified ratios
 for cloud in clouds:
+    i = 1
     for simp_ratio in clouds[cloud]:
-        i=1
-        print("Simplification no." + str(i))
+        print("Simplification no. " + str(i))
         # 1. Run algorithm and store results
 
         # Get original point cloud
@@ -75,7 +75,7 @@ for cloud in clouds:
         else:
             target_num_points = simp_ratio
             initial_set_size = initial_set_sizes[i-1]
-        i+=1
+        i += 1
         # Initialise and run algorithm
         alg = SubsetAlgorithm(
             coords,
