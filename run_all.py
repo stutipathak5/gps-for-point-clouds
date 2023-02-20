@@ -15,23 +15,35 @@ from gp_point_clouds.baselines import (
 )
 
 
+"cloud name: number of vertices (for reference from largest to smallest)"
+# lucy: 1,40,27,872
+# statuette: 49,99,996
+# asian_dragon: 36,09,600
+# manuscript: 21,55,617
+# happy_vrip: 5,43,652
+# dragon_vrip: 4,37,645
+# armadillo: 1,72,974
+# bun_zipper: 35,947
+
 
 mode = 1             # 0 for simp ratio mode and 1 for param mode
 
 
 curv_mode = "jak"  # Backend for curvature computation; use 'cc' for CloudComPy
-neigh_size = 30    # neighbourhood size for curvature computation
+neigh_size = 25    # neighbourhood size for curvature computation
 max_random_cloud_size = 25000  # Max. random cloud size (using ~45k on A100 GPU)
-opt_subset_size = 300
+opt_subset_size = 200
 n_iter = 100
 
 if mode == 0:
     # Define clouds to simplify and desired simplification ratios for each.
-    clouds = {"bun_zipper.ply": [0.1]}  # , "lucy.ply": [0.001, 0.002]}
+    clouds = {"armadillo.ply": [], "bun_zipper.ply": [], "asian_dragon.ply": [], "happy_vrip.ply": [], "dragon_vrip.ply": [],
+              "manuscript.ply": [], "statuette.ply": []}  # , "lucy.ply": [0.001, 0.002]}
+
 else:
     # Define clouds to simplify and desired target sizes for each.
-    clouds = {"bun_zipper.ply": [3000, 6000]}  # , "lucy.ply": [15000, 20000]}
-    initial_set_sizes = [1000, 2000]
+    clouds = {"bun_zipper.ply": [3594], "armadillo.ply": [17297]}
+    initial_set_sizes = [[1200], [2000]]
 
 # GPU initialisation (if available)
 if torch.cuda.is_available():
@@ -41,14 +53,15 @@ else:
     device = "cpu"
 print("Device:", device, "\n")
 
-# device = "cpu"   # comment for gpu use
+device = "cpu"   # comment for gpu use
 
 
 # Loop through all clouds for all specified ratios
+i=1
 for cloud in clouds:
-    i = 1
+    j = 1
     for simp_ratio in clouds[cloud]:
-        print("Simplification no. " + str(i))
+        print("Simplification no. " + str(j))
         # 1. Run algorithm and store results
 
         # Get original point cloud
@@ -74,8 +87,8 @@ for cloud in clouds:
             initial_set_size = int(target_num_points / 3)
         else:
             target_num_points = simp_ratio
-            initial_set_size = initial_set_sizes[i-1]
-        i += 1
+            initial_set_size = initial_set_sizes[i-1][j-1]
+        j += 1
         # Initialise and run algorithm
         alg = SubsetAlgorithm(
             coords,
@@ -136,7 +149,7 @@ for cloud in clouds:
         fps_simp = farthest_point_simplify(coords.to(device), target_num_points).to(
             "cpu"
         )
-        qdm_simp = qem_simplify(coords.cpu(), faces.cpu(), target_num_points)
+        # qdm_simp = qem_simplify(coords.cpu(), faces.cpu(), target_num_points)
 
         np.savetxt(
             os.path.join(save_dir, "rand_simp.xyz"),
@@ -153,76 +166,77 @@ for cloud in clouds:
             fps_simp.numpy(),
             delimiter=" ",
         )
-        np.savetxt(
-            os.path.join(save_dir, "qdm_simp.xyz"),
-            qdm_simp.numpy(),
-            delimiter=" ",
-        )
+        # np.savetxt(
+        #     os.path.join(save_dir, "qdm_simp.xyz"),
+        #     qdm_simp.numpy(),
+        #     delimiter=" ",
+        # )
 
-        # Compute metrics for GP simplified cloud and baselines
-        norm_consis_proposed, chamf_dist_proposed = compute_all_metrics(
-            coords, torch.tensor(simp_coords, dtype=torch.float, device=device)
-        )
-        norm_consis_rand, chamf_dist_rand = compute_all_metrics(
-            coords, rand_simp.to(device)
-        )
-        norm_consis_tcp, chamf_dist_tcp = compute_all_metrics(
-            coords, tcp_simp.to(device)
-        )
-        norm_consis_fps, chamf_dist_fps = compute_all_metrics(
-            coords, fps_simp.to(device)
-        )
-        norm_consis_qdm, chamf_dist_qdm = compute_all_metrics(
-            coords, qdm_simp.to(device)
-        )
-
-        gp_results_dict = {
-            "normals_consistency": norm_consis_proposed.item(),
-            "chamfer_distance_pos": chamf_dist_proposed[0].item(),
-            "chamfer_distance_norm": chamf_dist_proposed[1].item(),
-        }
-        rand_results_dict = {
-            "normals_consistency": norm_consis_rand.item(),
-            "chamfer_distance_pos": chamf_dist_rand[0].item(),
-            "chamfer_distance_norm": chamf_dist_rand[1].item(),
-        }
-        tcp_results_dict = {
-            "normals_consistency": norm_consis_tcp.item(),
-            "chamfer_distance_pos": chamf_dist_tcp[0].item(),
-            "chamfer_distance_norm": chamf_dist_tcp[1].item(),
-        }
-        fps_results_dict = {
-            "normals_consistency": norm_consis_fps.item(),
-            "chamfer_distance_pos": chamf_dist_fps[0].item(),
-            "chamfer_distance_norm": chamf_dist_fps[1].item(),
-        }
-        qdm_results_dict = {
-            "normals_consistency": norm_consis_qdm.item(),
-            "chamfer_distance_pos": chamf_dist_qdm[0].item(),
-            "chamfer_distance_norm": chamf_dist_qdm[1].item(),
-        }
-
-        with open(
-            os.path.join(save_dir, "gp_metrics.json"), "w", encoding="utf-8"
-        ) as f:
-            json.dump(gp_results_dict, f, ensure_ascii=False, indent=4)
-
-        with open(
-            os.path.join(save_dir, "rand_metrics.json"), "w", encoding="utf-8"
-        ) as f:
-            json.dump(rand_results_dict, f, ensure_ascii=False, indent=4)
-
-        with open(
-            os.path.join(save_dir, "tcp_metrics.json"), "w", encoding="utf-8"
-        ) as f:
-            json.dump(tcp_results_dict, f, ensure_ascii=False, indent=4)
-
-        with open(
-            os.path.join(save_dir, "fps_metrics.json"), "w", encoding="utf-8"
-        ) as f:
-            json.dump(fps_results_dict, f, ensure_ascii=False, indent=4)
-
-        with open(
-            os.path.join(save_dir, "qdm_metrics.json"), "w", encoding="utf-8"
-        ) as f:
-            json.dump(qdm_results_dict, f, ensure_ascii=False, indent=4)
+        # # Compute metrics for GP simplified cloud and baselines
+        # norm_consis_proposed, chamf_dist_proposed = compute_all_metrics(
+        #     coords, torch.tensor(simp_coords, dtype=torch.float, device=device)
+        # )
+        # norm_consis_rand, chamf_dist_rand = compute_all_metrics(
+        #     coords, rand_simp.to(device)
+        # )
+        # norm_consis_tcp, chamf_dist_tcp = compute_all_metrics(
+        #     coords, tcp_simp.to(device)
+        # )
+        # norm_consis_fps, chamf_dist_fps = compute_all_metrics(
+        #     coords, fps_simp.to(device)
+        # )
+        # norm_consis_qdm, chamf_dist_qdm = compute_all_metrics(
+        #     coords, qdm_simp.to(device)
+        # )
+        #
+        # gp_results_dict = {
+        #     "normals_consistency": norm_consis_proposed.item(),
+        #     "chamfer_distance_pos": chamf_dist_proposed[0].item(),
+        #     "chamfer_distance_norm": chamf_dist_proposed[1].item(),
+        # }
+        # rand_results_dict = {
+        #     "normals_consistency": norm_consis_rand.item(),
+        #     "chamfer_distance_pos": chamf_dist_rand[0].item(),
+        #     "chamfer_distance_norm": chamf_dist_rand[1].item(),
+        # }
+        # tcp_results_dict = {
+        #     "normals_consistency": norm_consis_tcp.item(),
+        #     "chamfer_distance_pos": chamf_dist_tcp[0].item(),
+        #     "chamfer_distance_norm": chamf_dist_tcp[1].item(),
+        # }
+        # fps_results_dict = {
+        #     "normals_consistency": norm_consis_fps.item(),
+        #     "chamfer_distance_pos": chamf_dist_fps[0].item(),
+        #     "chamfer_distance_norm": chamf_dist_fps[1].item(),
+        # }
+        # qdm_results_dict = {
+        #     "normals_consistency": norm_consis_qdm.item(),
+        #     "chamfer_distance_pos": chamf_dist_qdm[0].item(),
+        #     "chamfer_distance_norm": chamf_dist_qdm[1].item(),
+        # }
+        #
+        # with open(
+        #     os.path.join(save_dir, "gp_metrics.json"), "w", encoding="utf-8"
+        # ) as f:
+        #     json.dump(gp_results_dict, f, ensure_ascii=False, indent=4)
+        #
+        # with open(
+        #     os.path.join(save_dir, "rand_metrics.json"), "w", encoding="utf-8"
+        # ) as f:
+        #     json.dump(rand_results_dict, f, ensure_ascii=False, indent=4)
+        #
+        # with open(
+        #     os.path.join(save_dir, "tcp_metrics.json"), "w", encoding="utf-8"
+        # ) as f:
+        #     json.dump(tcp_results_dict, f, ensure_ascii=False, indent=4)
+        #
+        # with open(
+        #     os.path.join(save_dir, "fps_metrics.json"), "w", encoding="utf-8"
+        # ) as f:
+        #     json.dump(fps_results_dict, f, ensure_ascii=False, indent=4)
+        #
+        # with open(
+        #     os.path.join(save_dir, "qdm_metrics.json"), "w", encoding="utf-8"
+        # ) as f:
+        #     json.dump(qdm_results_dict, f, ensure_ascii=False, indent=4)
+    i += 1

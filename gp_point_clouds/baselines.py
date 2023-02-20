@@ -4,6 +4,7 @@ from dgl.geometry import farthest_point_sampler
 from quad_mesh_simplify import simplify_mesh
 
 
+
 def random_simplify(orig_coords, target_num_points):
     """Random/uniform sampling."""
     rand_idx = torch.randperm(orig_coords.size(0))[:target_num_points]

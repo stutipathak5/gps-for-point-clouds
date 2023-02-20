@@ -13,7 +13,7 @@ else:
     device = "cpu"
 print("Device:", device, "\n")
 
-# device = "cpu"  # comment for gpu use
+device = "cpu"  # comment for gpu use
 
 # Give user option to use simplification ratio or raw parameters
 mode = int(input("Enter 0 for simp_ratio mode and 1 for parameters mode: ") or 1)
