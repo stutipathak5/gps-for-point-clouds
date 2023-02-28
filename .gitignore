@@ -7,3 +7,8 @@ csf_setup.sh
 lucy.ply
 quadric-mesh-simplification/
 resources/results/
+fast_point_cloud_sampling/
+eigen-git-mirror/
+Open3D/
+cgal/
+*.ply

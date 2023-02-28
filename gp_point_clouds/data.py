@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 
+
 def get_data_jak(file_name, neigh_size, device="cpu"):
 
     from pytorch3d.io import IO
@@ -52,15 +53,9 @@ def get_data_cc(file_name, neigh_size):
     surface_per_point = surface / coords.size(0)
     radius = np.sqrt(surface_per_point * neigh_size)
     # cc.computeNormals([cloud])
-    cc.computeCurvature(
-        cc.CurvatureType.NORMAL_CHANGE_RATE, radius, [cloud]
-    )
+    cc.computeCurvature(cc.CurvatureType.NORMAL_CHANGE_RATE, radius, [cloud])
     nsf = cloud.getNumberOfScalarFields()
     # norm = torch.from_numpy(cloud.getScalarField(nsf - 2).toNpArray()).double()
     curv = torch.from_numpy(cloud.getScalarField(nsf - 1).toNpArray()).double()
 
     return coords, curv, faces
-
-
-
-

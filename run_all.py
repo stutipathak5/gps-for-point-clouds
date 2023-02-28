@@ -6,12 +6,9 @@ import pathlib
 import numpy as np
 from gp_point_clouds.algorithm import SubsetAlgorithm
 from gp_point_clouds.data import get_data_jak, get_data_cc
-from gp_point_clouds.metrics import compute_all_metrics
 from gp_point_clouds.baselines import (
     random_simplify,
     top_curvature_simplify,
-    farthest_point_simplify,
-    qem_simplify,
 )
 
 
@@ -26,19 +23,27 @@ from gp_point_clouds.baselines import (
 # bun_zipper: 35,947
 
 
-mode = 1             # 0 for simp ratio mode and 1 for param mode
-
+mode = 0  # 0 for simp ratio mode and 1 for param mode
 
 curv_mode = "jak"  # Backend for curvature computation; use 'cc' for CloudComPy
-neigh_size = 25    # neighbourhood size for curvature computation
-max_random_cloud_size = 25000  # Max. random cloud size (using ~45k on A100 GPU)
+neigh_size = 25  # neighbourhood size for curvature computation
+max_random_cloud_size = 40000  # Max. random cloud size (using ~45k on A100 GPU)
 opt_subset_size = 200
 n_iter = 100
 
 if mode == 0:
     # Define clouds to simplify and desired simplification ratios for each.
-    clouds = {"armadillo.ply": [], "bun_zipper.ply": [], "asian_dragon.ply": [], "happy_vrip.ply": [], "dragon_vrip.ply": [],
-              "manuscript.ply": [], "statuette.ply": []}  # , "lucy.ply": [0.001, 0.002]}
+    clouds = {
+        "lucy.ply": [0.001, 0.002],
+    }
+    #     "armadillo.ply": [],
+    #     "bun_zipper.ply": [],
+    #     "asian_dragon.ply": [],
+    #     "happy_vrip.ply": [],
+    #     "dragon_vrip.ply": [],
+    #     "manuscript.ply": [],
+    #     "statuette.ply": [],
+    # }
 
 else:
     # Define clouds to simplify and desired target sizes for each.
@@ -53,11 +58,11 @@ else:
     device = "cpu"
 print("Device:", device, "\n")
 
-device = "cpu"   # comment for gpu use
+# device = "cpu"   # comment for gpu use
 
 
 # Loop through all clouds for all specified ratios
-i=1
+i = 1
 for cloud in clouds:
     j = 1
     for simp_ratio in clouds[cloud]:
@@ -87,7 +92,7 @@ for cloud in clouds:
             initial_set_size = int(target_num_points / 3)
         else:
             target_num_points = simp_ratio
-            initial_set_size = initial_set_sizes[i-1][j-1]
+            initial_set_size = initial_set_sizes[i - 1][j - 1]
         j += 1
         # Initialise and run algorithm
         alg = SubsetAlgorithm(
@@ -139,17 +144,13 @@ for cloud in clouds:
             orig_curv=curv.cpu().numpy(),
         )
 
-        # 2. Evaluate metrics and benchmark against baselines
+        # 2. Compute random and TCP baselines (others are in other_simp_methods.py)
 
         # Compute different baseline simplification methods
         rand_simp = random_simplify(coords.to(device), target_num_points).to("cpu")
         tcp_simp = top_curvature_simplify(
             curv.to(device), coords.to(device), target_num_points
         ).to("cpu")
-        fps_simp = farthest_point_simplify(coords.to(device), target_num_points).to(
-            "cpu"
-        )
-        # qdm_simp = qem_simplify(coords.cpu(), faces.cpu(), target_num_points)
 
         np.savetxt(
             os.path.join(save_dir, "rand_simp.xyz"),
@@ -161,82 +162,4 @@ for cloud in clouds:
             tcp_simp.numpy(),
             delimiter=" ",
         )
-        np.savetxt(
-            os.path.join(save_dir, "fps_simp.xyz"),
-            fps_simp.numpy(),
-            delimiter=" ",
-        )
-        # np.savetxt(
-        #     os.path.join(save_dir, "qdm_simp.xyz"),
-        #     qdm_simp.numpy(),
-        #     delimiter=" ",
-        # )
-
-        # # Compute metrics for GP simplified cloud and baselines
-        # norm_consis_proposed, chamf_dist_proposed = compute_all_metrics(
-        #     coords, torch.tensor(simp_coords, dtype=torch.float, device=device)
-        # )
-        # norm_consis_rand, chamf_dist_rand = compute_all_metrics(
-        #     coords, rand_simp.to(device)
-        # )
-        # norm_consis_tcp, chamf_dist_tcp = compute_all_metrics(
-        #     coords, tcp_simp.to(device)
-        # )
-        # norm_consis_fps, chamf_dist_fps = compute_all_metrics(
-        #     coords, fps_simp.to(device)
-        # )
-        # norm_consis_qdm, chamf_dist_qdm = compute_all_metrics(
-        #     coords, qdm_simp.to(device)
-        # )
-        #
-        # gp_results_dict = {
-        #     "normals_consistency": norm_consis_proposed.item(),
-        #     "chamfer_distance_pos": chamf_dist_proposed[0].item(),
-        #     "chamfer_distance_norm": chamf_dist_proposed[1].item(),
-        # }
-        # rand_results_dict = {
-        #     "normals_consistency": norm_consis_rand.item(),
-        #     "chamfer_distance_pos": chamf_dist_rand[0].item(),
-        #     "chamfer_distance_norm": chamf_dist_rand[1].item(),
-        # }
-        # tcp_results_dict = {
-        #     "normals_consistency": norm_consis_tcp.item(),
-        #     "chamfer_distance_pos": chamf_dist_tcp[0].item(),
-        #     "chamfer_distance_norm": chamf_dist_tcp[1].item(),
-        # }
-        # fps_results_dict = {
-        #     "normals_consistency": norm_consis_fps.item(),
-        #     "chamfer_distance_pos": chamf_dist_fps[0].item(),
-        #     "chamfer_distance_norm": chamf_dist_fps[1].item(),
-        # }
-        # qdm_results_dict = {
-        #     "normals_consistency": norm_consis_qdm.item(),
-        #     "chamfer_distance_pos": chamf_dist_qdm[0].item(),
-        #     "chamfer_distance_norm": chamf_dist_qdm[1].item(),
-        # }
-        #
-        # with open(
-        #     os.path.join(save_dir, "gp_metrics.json"), "w", encoding="utf-8"
-        # ) as f:
-        #     json.dump(gp_results_dict, f, ensure_ascii=False, indent=4)
-        #
-        # with open(
-        #     os.path.join(save_dir, "rand_metrics.json"), "w", encoding="utf-8"
-        # ) as f:
-        #     json.dump(rand_results_dict, f, ensure_ascii=False, indent=4)
-        #
-        # with open(
-        #     os.path.join(save_dir, "tcp_metrics.json"), "w", encoding="utf-8"
-        # ) as f:
-        #     json.dump(tcp_results_dict, f, ensure_ascii=False, indent=4)
-        #
-        # with open(
-        #     os.path.join(save_dir, "fps_metrics.json"), "w", encoding="utf-8"
-        # ) as f:
-        #     json.dump(fps_results_dict, f, ensure_ascii=False, indent=4)
-        #
-        # with open(
-        #     os.path.join(save_dir, "qdm_metrics.json"), "w", encoding="utf-8"
-        # ) as f:
-        #     json.dump(qdm_results_dict, f, ensure_ascii=False, indent=4)
     i += 1
