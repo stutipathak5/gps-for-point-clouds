@@ -28,8 +28,8 @@ mode = 1  # 0 for simp ratio mode and 1 for param mode
 curv_mode = "jak"  # Backend for curvature computation; use 'cc' for CloudComPy
 neigh_size = 25  # neighbourhood size for curvature computation
 max_random_cloud_size = 40000  # Max. random cloud size (using ~45k on A100 GPU)
-opt_subset_size = 10000
-n_iter = 300
+opt_subset_size = 200
+n_iter = 100
 
 if mode == 0:
     # Define clouds to simplify and desired simplification ratios for each.
@@ -42,14 +42,14 @@ else:
     clouds = {
         "dragon_vrip.ply": [int(0.03 * dragon_vrip_len)],
         "lucy.ply": [int(0.002 * lucy_len)],
-        # "armadillo.ply": [int(0.05 * armadillo_len)],
+        "armadillo.ply": [int(0.05 * armadillo_len)],
     }
     initial_set_sizes = [
-        [int(0.3 * 0.03 * dragon_vrip_len)],
-        [int(0.3 * 0.002 * lucy_len)],  # was 0.15 with 40k max
-        # [int(0.4 * 0.05 * armadillo_len)],
+        [int(1 / 3 * 0.03 * dragon_vrip_len)],
+        [int(1 / 3 * 0.002 * lucy_len)],
+        [int(1 / 3 * 0.05 * armadillo_len)],
     ]
-    max_random_cloud_sizes = [[40000], [40000]]  # , [40000]]
+    max_random_cloud_sizes = [[25000], [40000], [25000]]
 
 
 # GPU initialisation (if available)
