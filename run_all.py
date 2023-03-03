@@ -13,42 +13,44 @@ from gp_point_clouds.baselines import (
 
 
 "cloud name: number of vertices (for reference from largest to smallest)"
-# lucy: 1,40,27,872
-# statuette: 49,99,996
-# asian_dragon: 36,09,600
-# manuscript: 21,55,617
-# happy_vrip: 5,43,652
-# dragon_vrip: 4,37,645
-# armadillo: 1,72,974
-# bun_zipper: 35,947
+lucy_len = 14027872
+statuette_len = 4999996
+asian_dragon_len = 3609600
+manuscript_len = 2155617
+happy_vrip_len = 543652
+dragon_vrip_len = 437645
+armadillo_len = 172974
+bun_zipper_len = 35947
 
 
-mode = 0  # 0 for simp ratio mode and 1 for param mode
+mode = 1  # 0 for simp ratio mode and 1 for param mode
 
 curv_mode = "jak"  # Backend for curvature computation; use 'cc' for CloudComPy
 neigh_size = 25  # neighbourhood size for curvature computation
 max_random_cloud_size = 40000  # Max. random cloud size (using ~45k on A100 GPU)
-opt_subset_size = 200
-n_iter = 100
+opt_subset_size = 10000
+n_iter = 300
 
 if mode == 0:
     # Define clouds to simplify and desired simplification ratios for each.
     clouds = {
         "lucy.ply": [0.001, 0.002],
     }
-    #     "armadillo.ply": [],
-    #     "bun_zipper.ply": [],
-    #     "asian_dragon.ply": [],
-    #     "happy_vrip.ply": [],
-    #     "dragon_vrip.ply": [],
-    #     "manuscript.ply": [],
-    #     "statuette.ply": [],
-    # }
 
 else:
     # Define clouds to simplify and desired target sizes for each.
-    clouds = {"bun_zipper.ply": [3594], "armadillo.ply": [17297]}
-    initial_set_sizes = [[1200], [2000]]
+    clouds = {
+        "dragon_vrip.ply": [int(0.03 * dragon_vrip_len)],
+        "lucy.ply": [int(0.002 * lucy_len)],
+        # "armadillo.ply": [int(0.05 * armadillo_len)],
+    }
+    initial_set_sizes = [
+        [int(0.3 * 0.03 * dragon_vrip_len)],
+        [int(0.3 * 0.002 * lucy_len)],  # was 0.15 with 40k max
+        # [int(0.4 * 0.05 * armadillo_len)],
+    ]
+    max_random_cloud_sizes = [[40000], [40000]]  # , [40000]]
+
 
 # GPU initialisation (if available)
 if torch.cuda.is_available():
@@ -60,6 +62,8 @@ print("Device:", device, "\n")
 
 # device = "cpu"   # comment for gpu use
 
+torch.manual_seed(12)
+np.random.seed(12)
 
 # Loop through all clouds for all specified ratios
 i = 1
@@ -83,7 +87,10 @@ for cloud in clouds:
         simp_start = time.time()
         # Define algorithm parameters
         if original_data_size > max_random_cloud_size:
-            random_cloud_size = max_random_cloud_size
+            if mode == 1:
+                random_cloud_size = max_random_cloud_sizes[i - 1][j - 1]
+            else:
+                random_cloud_size = max_random_cloud_size
         else:
             random_cloud_size = original_data_size
 
