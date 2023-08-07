@@ -1,4 +1,6 @@
-"""Adapted from registration code available at https://github.com/pytholic/Open3d-Global_ICP-Registration/blob/main/main.py"""
+"""
+Adapted from registration code available at https://github.com/pytholic/Open3d-Global_ICP-Registration/blob/main/main.py
+"""
 
 import open3d as o3d
 import numpy as np
@@ -45,8 +47,8 @@ def prepare_dataset(voxel_size):
     # target_xyz = mesh_to_array(target_obj)
     # source = array_to_pcd(source_xyz) # source
     # target = array_to_pcd(target_xyz) # target
-    source = o3d.io.read_point_cloud("C:/Users/spathak/Downloads/GP_based_PCS_Final/improvements/registration/dragon/gp_simp.xyz")
-    target = o3d.io.read_point_cloud("C:/Users/spathak/Downloads/GP_based_PCS_Final/improvements/registration/dragon/gp_simp_rot.xyz")
+    source = o3d.io.read_point_cloud("C:/Users/spathak/Downloads/GP_based_PCS_Final/improvements/registration/dragon/hc.xyz")
+    target = o3d.io.read_point_cloud("C:/Users/spathak/Downloads/GP_based_PCS_Final/improvements/registration/dragon/hc_trans.xyz")
     
     # # Misalign with a rotation matrix as transformation
     # trans_init = np.asarray([[0.0, 0.0, 1.0, 0.0], [1.0, 0.0, 0.0, 0.0], # rotate around y-axis by 90 degrees
@@ -106,14 +108,20 @@ def refine_registration(source, target, source_fpfh, target_fpfh, voxel_size):
     print(":: Point-to-plane ICP registration is applied on original point")
     print("   clouds to refine the alignment. This time we use a strict")
     print("   distance threshold %.3f." % distance_threshold)
+
     result = o3d.pipelines.registration.registration_icp(
         source, target, distance_threshold, result_ransac.transformation,
         o3d.pipelines.registration.TransformationEstimationPointToPoint())
     return result
 
 
-
+start1 = time.time()
 result_icp = refine_registration(source, target, source_fpfh, target_fpfh,
                                  voxel_size)
+print("ICP registration took %.3f sec.\n" % (time.time() - start1))
 print(result_icp)
+print(result_icp.transformation)
 draw_registration_result(source, target, result_icp.transformation)
+
+# o3d.io.write_point_cloud(f"C:/Users/spathak/Downloads/GP_based_PCS_Final/improvements/registration/dragon/dragon_vrip_r1.xyz", source)
+# o3d.io.write_point_cloud(f"C:/Users/spathak/Downloads/GP_based_PCS_Final/improvements/registration/dragon/dragon_vrip_r2.xyz", target)
