@@ -5,6 +5,7 @@ import numpy as np
 from gp_point_clouds.algorithm import SubsetAlgorithm
 from gp_point_clouds.data import get_data_jak, get_data_cc
 
+
 # GPU initialisation (if available)
 if torch.cuda.is_available():
     device = "cuda"
@@ -13,7 +14,7 @@ else:
     device = "cpu"
 print("Device:", device, "\n")
 
-device = "cpu"  # comment for gpu use
+# device = "cpu"  # comment for gpu use
 
 # Give user option to use simplification ratio or raw parameters
 mode = int(input("Enter 0 for simp_ratio mode and 1 for parameters mode: ") or 1)
@@ -89,6 +90,8 @@ if mode == 0:
     target_num_points = int(original_data_size * simp_ratio)
     initial_set_size = int(target_num_points / 3)
     # initial_set_size = int(radius*1000)
+    # opt_subset_size = 300
+    # n_iter = 100
     opt_subset_size = 300
     n_iter = 100
 
@@ -172,4 +175,10 @@ else:
         org_curv=curv.cpu().numpy(),
     )
 
+# to export in ply
+import open3d as o3d
+
+pcd = o3d.geometry.PointCloud()
+pcd.points = o3d.utility.Vector3dVector(simp_coords)
+o3d.io.write_point_cloud("resources/results/" + file_name.replace(".ply", "_") + str(target_num_points) + ".ply", pcd)
 

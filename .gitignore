@@ -12,3 +12,4 @@ eigen-git-mirror/
 Open3D/
 cgal/
 *.ply
+other_datasets/
