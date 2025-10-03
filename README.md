@@ -65,9 +65,17 @@ pip install numpy==1.26.4
 
 ## 🚀 Quick Start
 
-Download this repo and activate your conda environment:
+### Windows:
 
-linux:
+```bash
+git clone https://github.com/stutipathak5/gps-for-point-clouds.git
+cd gps-for-point-clouds
+conda activate pcs 
+python demo.py
+```
+
+### Ubuntu 24
+
 ```bash
 git clone https://github.com/stutipathak5/gps-for-point-clouds.git
 cd gps-for-point-clouds
@@ -75,14 +83,6 @@ cd gps-for-point-clouds
 python demo.py
 ```
 
-Windows:
-```bash
-git clone https://github.com/stutipathak5/gps-for-point-clouds.git
-cd gps-for-point-clouds
-conda activate pcs 
-python demo.py
-
-```
 For multiple point clouds, run_all.py can be used.
 
 ## 📝 Citation
