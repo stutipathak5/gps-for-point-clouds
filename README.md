@@ -9,6 +9,44 @@
 
 ![Teaser](./teaser.png)
 
+## 🛠️ Setup
+
+Environment setup instructions for Ubuntu and Windows via Conda are provided below:
+
+### Ubuntu 22
+
+Download [CloudComPy binaries](https://www.simulation.openfields.fr/index.php/cloudcompy-downloads/3-cloudcompy-binaries/4-linux-cloudcompy-binaries/30-cloudcompy-conda310-linux64-20221122) and uzip in your working directory. 
+
+```bash
+conda update -y -n base -c defaults conda
+conda create --name pcs python=3.10 
+conda activate pcs
+conda config --add channels conda-forge 
+conda config --set channel_priority strict 
+conda install "boost=1.74" "cgal=5.4" cmake ffmpeg "gdal=3.5" jupyterlab laszip "matplotlib=3.5" "mysql=8.0" "numpy=1.22" "opencv=4.5" "openmp=8.0" "pcl=1.12" "pdal=2.4" "psutil=5.9" pybind11 "qhull=2020.2" "qt=5.15.4" "scipy=1.8" sphinx_rtd_theme spyder tbb tbb-devel "xerces-c=3.2" 
+conda deactivate 
+
+. CloudComPy310/bin/condaCloud.sh activate pcs 
+pip3 install torch torchvision torchaudio 
+pip install gpytorch 
+pip install git+https://github.com/gpflow/geometrickernels.git 
+pip install --pre dgl -f https://data.dgl.ai/wheels/cu117/repo.html 
+pip install --pre dglgo -f https://data.dgl.ai/wheels-test/repo.html 
+```
+
+### Windows
+
+```bash
+conda create -n pcs python=3.9 
+conda activate pcs
+conda install pytorch=1.13.0 torchvision pytorch-cuda=11.6 -c pytorch -c nvidia
+pip install "git+https://github.com/facebookresearch/pytorch3d.git"
+conda install matplotlib
+pip install gpytorch
+pip install git+https://github.com/gpflow/geometrickernels.git
+conda install -c dglteam/label/cu117 dgl; python -m pip install jakteristics pip install open3d
+```
+
 ## 📝 Citation
 
 Please consider citing the following if you find this work useful:
@@ -23,4 +61,8 @@ Please consider citing the following if you find this work useful:
   organization={Springer}
 }
 ```
+
+
+
+
 
