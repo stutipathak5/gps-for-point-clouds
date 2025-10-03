@@ -2,7 +2,7 @@ import time
 import torch
 import gpytorch
 import numpy as np
-from geometric_kernels.frontends.gpytorch import GPytorchGeometricKernel
+from geometric_kernels.frontends.gpytorch import GPyTorchGeometricKernel
 from dgl.geometry import farthest_point_sampler
 from gp_point_clouds.spaces import PointCloud
 from gp_point_clouds.model import GPModel
