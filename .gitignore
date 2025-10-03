@@ -13,5 +13,5 @@ Open3D/
 cgal/
 *.ply
 other_datasets/
-resources/clouds/DynamicFAUST
-resources/new
+resources/clouds/DynamicFAUST/
+resources/new/
