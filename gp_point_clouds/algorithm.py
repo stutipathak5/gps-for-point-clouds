@@ -2,6 +2,7 @@ import time
 import torch
 import gpytorch
 import numpy as np
+# changes done below for changes in the new geometric_kernels github
 from geometric_kernels.frontends.gpytorch import GPyTorchGeometricKernel
 from dgl.geometry import farthest_point_sampler
 from gp_point_clouds.spaces import PointCloud

@@ -22,8 +22,8 @@ Environment setup instructions for Ubuntu and Windows via Conda are provided bel
 ```bash
 conda create -n pcs python=3.9
 conda activate pcs
-# pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu126
-conda install pytorch==1.13.0 torchvision==0.14.0 torchaudio==0.13.0 pytorch-cuda=11.6 -c pytorch -c nvidia
+pip install torch==1.13.0+cu116 torchvision==0.14.0+cu116 torchaudio==0.13.0 --extra-index-url https://download.pytorch.org/whl/cu116
+# conda install pytorch==1.13.0 torchvision==0.14.0 torchaudio==0.13.0 pytorch-cuda=11.6 -c pytorch -c nvidia
 # conda install pytorch=1.13.0 torchvision pytorch-cuda=11.6 -c pytorch -c nvidia
 pip install "git+https://github.com/facebookresearch/pytorch3d.git"
 conda install matplotlib
@@ -43,7 +43,7 @@ tar -xvzf CloudComPy_Conda310_Linux64_20240420.tgz
 
 Step 2:
 ```bash
-conda update -y -n base -c defaults conda
+# conda update -y -n base -c defaults conda
 conda create --name pcs python=3.10 
 conda activate pcs
 conda config --add channels conda-forge 
@@ -71,11 +71,14 @@ Download this repo and activate your conda environment:
 git clone https://github.com/stutipathak5/gps-for-point-clouds.git
 cd gps-for-point-clouds
 . CloudComPy310/bin/condaCloud.sh activate pcs 
-
+python demo.py
 ```
 
 For one point cloud:
 ```bash
+git clone https://github.com/stutipathak5/gps-for-point-clouds.git
+cd gps-for-point-clouds
+conda activate pcs 
 python demo.py
 
 ```
