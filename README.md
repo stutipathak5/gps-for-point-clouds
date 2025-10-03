@@ -23,13 +23,13 @@ Environment setup instructions for Ubuntu and Windows via Conda are provided bel
 conda create -n pcs python=3.9
 conda activate pcs
 pip install torch==1.13.0+cu116 torchvision==0.14.0+cu116 torchaudio==0.13.0 --extra-index-url https://download.pytorch.org/whl/cu116
-# conda install pytorch==1.13.0 torchvision==0.14.0 torchaudio==0.13.0 pytorch-cuda=11.6 -c pytorch -c nvidia
-# conda install pytorch=1.13.0 torchvision pytorch-cuda=11.6 -c pytorch -c nvidia
 pip install "git+https://github.com/facebookresearch/pytorch3d.git"
 conda install matplotlib
 pip install gpytorch
 pip install git+https://github.com/gpflow/geometrickernels.git
-conda install -c dglteam/label/cu117 dgl; python -m pip install jakteristics pip install open3d
+conda install -c dglteam/label/cu117 dgl
+python -m pip install jakteristics 
+pip install open3d
 ```
 
 ### Ubuntu 24
@@ -67,6 +67,7 @@ pip install numpy==1.26.4
 
 Download this repo and activate your conda environment:
 
+linux:
 ```bash
 git clone https://github.com/stutipathak5/gps-for-point-clouds.git
 cd gps-for-point-clouds
@@ -74,7 +75,7 @@ cd gps-for-point-clouds
 python demo.py
 ```
 
-For one point cloud:
+Windows:
 ```bash
 git clone https://github.com/stutipathak5/gps-for-point-clouds.git
 cd gps-for-point-clouds
@@ -82,11 +83,7 @@ conda activate pcs
 python demo.py
 
 ```
-For multiple point clouds:
-```bash
-
-
-```
+For multiple point clouds, run_all.py can be used.
 
 ## 📝 Citation
 
