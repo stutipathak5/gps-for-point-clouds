@@ -17,10 +17,29 @@ Read our paper here:
 
 Environment setup instructions for Ubuntu and Windows via Conda are provided below:
 
-### Ubuntu 22
+### Windows
+
+```bash
+conda create -n pcs python=3.9
+conda activate pcs
+# pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+conda install pytorch==1.13.0 torchvision==0.14.0 torchaudio==0.13.0 pytorch-cuda=11.6 -c pytorch -c nvidia
+# conda install pytorch=1.13.0 torchvision pytorch-cuda=11.6 -c pytorch -c nvidia
+pip install "git+https://github.com/facebookresearch/pytorch3d.git"
+conda install matplotlib
+pip install gpytorch
+pip install git+https://github.com/gpflow/geometrickernels.git
+conda install -c dglteam/label/cu117 dgl; python -m pip install jakteristics pip install open3d
+```
+
+### Ubuntu 24
 
 Step 1:
-Download [CloudComPy binaries](https://www.simulation.openfields.fr/index.php/cloudcompy-downloads/3-cloudcompy-binaries/4-linux-cloudcompy-binaries/30-cloudcompy-conda310-linux64-20221122) and uzip in your working directory. 
+Download [CloudComPy binaries](https://www.simulation.openfields.fr/index.php/cloudcompy-downloads/3-cloudcompy-binaries/4-linux-cloudcompy-binaries/99-cloudcompy-conda310-linux64-20240420) in your working directory and unzip:
+
+```bash
+tar -xvzf CloudComPy_Conda310_Linux64_20240420.tgz 
+```
 
 Step 2:
 ```bash
@@ -41,19 +60,29 @@ pip install gpytorch
 pip install git+https://github.com/gpflow/geometrickernels.git 
 pip install --pre dgl -f https://data.dgl.ai/wheels/cu117/repo.html 
 pip install --pre dglgo -f https://data.dgl.ai/wheels-test/repo.html 
+pip install numpy==1.26.4
 ```
 
-### Windows
+## 🚀 Quick Start
+
+Download this repo and activate your conda environment:
 
 ```bash
-conda create -n pcs python=3.9 
-conda activate pcs
-conda install pytorch=1.13.0 torchvision pytorch-cuda=11.6 -c pytorch -c nvidia
-pip install "git+https://github.com/facebookresearch/pytorch3d.git"
-conda install matplotlib
-pip install gpytorch
-pip install git+https://github.com/gpflow/geometrickernels.git
-conda install -c dglteam/label/cu117 dgl; python -m pip install jakteristics pip install open3d
+git clone https://github.com/stutipathak5/gps-for-point-clouds.git
+cd gps-for-point-clouds
+. CloudComPy310/bin/condaCloud.sh activate pcs 
+
+```
+
+For one point cloud:
+```bash
+python demo.py
+
+```
+For multiple point clouds:
+```bash
+
+
 ```
 
 ## 📝 Citation

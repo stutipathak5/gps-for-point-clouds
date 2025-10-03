@@ -15,3 +15,5 @@ cgal/
 other_datasets/
 resources/clouds/DynamicFAUST/
 resources/new/
+add_noise.py
+download_datasets.py
