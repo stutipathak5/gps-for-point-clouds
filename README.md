@@ -65,7 +65,7 @@ pip install numpy==1.26.4
 
 ## 🚀 Quick Start
 
-### Windows:
+### Windows
 
 ```bash
 git clone https://github.com/stutipathak5/gps-for-point-clouds.git
